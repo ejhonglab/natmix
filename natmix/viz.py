@@ -47,6 +47,11 @@ def plot_corr(corr: xr.DataArray, *, panel=None, title='') -> Figure:
     corr = corr.sel(odor=(corr.is_pair == False), odor_b=(corr.is_pair_b == False)
         ).copy()
 
+    if len(corr) == 0:
+        raise ValueError('corr did not contain any non-pair experiment data! '
+            'currently pair experiment data is not analyzed in plot_corr.'
+        )
+
     # TODO maybe replace this w/ sort kwarg to matshow / to-be-added-by
     # callable_ticklabels (as normally the latter would make this to_pandas() call, but
     # now we need to sort, and easier to do that starting from a dataframe)
@@ -66,16 +71,16 @@ def plot_corr(corr: xr.DataArray, *, panel=None, title='') -> Figure:
         # 'repeat' level
         warnings.simplefilter('ignore', UserWarning)
 
-        # TODO shared vmin/vmax? (thread kwargs thru?)
-        # TODO colorbar label
+        # TODO colorbar label (thread thru kwarg?)
         fig, _  = viz.matshow(corr, title=title,
             xticklabels=xticklabels, yticklabels=yticklabels,
             # NOTE: this would currently cause failure on the pair experiment data
             # (because the multiple solvent entries i assume)
-            #group_ticklabels=True,
             # TODO TODO fix. i think it's causing failure when i add a limited
             # amount of pair expt data b/c of duplicate ea -4.2 etc
-            group_ticklabels=False,
+            group_ticklabels=True,
+            vmin=-0.2,
+            vmax=1.0,
         )
 
     return fig
