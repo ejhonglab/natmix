@@ -1,0 +1,7 @@
+natmix.viz module
+=================
+
+.. automodule:: natmix.viz
+   :members:
+   :undoc-members:
+   :show-inheritance:

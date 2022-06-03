@@ -183,6 +183,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
     # TODO return to using this if i can resolve the order issue (seems like it would
     # take changes in my seaborn fork). in the meantime, may still want to compare
     # current plot to this to help ensure correctness of current plot.
+    # TODO TODO also use fly_id_palette for testing against this plot
     #g = sns.catplot(**plot_fn_kws, **shared_facet_kws, kind='point', legend=False)
 
     g.set_titles('{col_name}')

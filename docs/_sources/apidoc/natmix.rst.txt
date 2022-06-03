@@ -1,0 +1,18 @@
+natmix package
+==============
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   natmix.viz
+
+Module contents
+---------------
+
+.. automodule:: natmix
+   :members:
+   :undoc-members:
+   :show-inheritance:
