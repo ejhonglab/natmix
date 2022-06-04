@@ -69,7 +69,7 @@
 <span id="natmix-viz-module"></span><h1>natmix.viz module<a class="headerlink" href="#module-natmix.viz" title="Permalink to this heading"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="natmix.viz.plot_activation_strength">
-<span class="sig-prename descclassname"><span class="pre">natmix.viz.</span></span><span class="sig-name descname"><span class="pre">plot_activation_strength</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activation_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean_dff'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_flies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_checks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/natmix/viz.html#plot_activation_strength"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#natmix.viz.plot_activation_strength" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">natmix.viz.</span></span><span class="sig-name descname"><span class="pre">plot_activation_strength</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activation_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean_dff'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_flies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_checks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/natmix/viz.html#plot_activation_strength"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#natmix.viz.plot_activation_strength" title="Permalink to this definition"></a></dt>
 <dd><p>Shows activation strength of each odor in each panel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -82,7 +82,10 @@
 - ‘odor1’
 - ‘odor2’
 - Column specified by <cite>activation_col</cite></p></li>
-<li><p><strong>activation_col</strong> – the Y-axis variable</p></li>
+<li><p><strong>activation_col</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – the Y-axis variable</p></li>
+<li><p><strong>ylabel</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – label for Y-axis. If not passed, will check whether
+natmix.viz.activation_col2label has a label for the current activation_col.
+Otherwise, will just use the column name.</p></li>
 <li><p><strong>color_flies</strong> – if True, will color points to indicate fly identity (shared across
 facets), as well as connecting points from the same fly together</p></li>
 </ul>
@@ -99,11 +102,18 @@ facets), as well as connecting points from the same fly together</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="natmix.viz.plot_corr">
-<span class="sig-prename descclassname"><span class="pre">natmix.viz.</span></span><span class="sig-name descname"><span class="pre">plot_corr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">corr</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">panel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/natmix/viz.html#plot_corr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#natmix.viz.plot_corr" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">natmix.viz.</span></span><span class="sig-name descname"><span class="pre">plot_corr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">corr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">panel</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/natmix/viz.html#plot_corr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#natmix.viz.plot_corr" title="Permalink to this definition"></a></dt>
 <dd><p>Shows correlations between representations of panel odors.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Figure</span></code></p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>corr</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">DataArray</span></code>) – pairwise correlations betweeen all odors in panel, of shape
+(# odors, # odors)</p></li>
+<li><p><strong>panel</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – ‘kiwi’/’control’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Figure</span></code></p>
 </dd>
 </dl>
 </dd></dl>

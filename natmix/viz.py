@@ -1,9 +1,11 @@
 
 import warnings
+from typing import Optional
 
 import pandas as pd
 import xarray as xr
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
@@ -11,7 +13,7 @@ from hong2p.olf import format_mix_from_strs, sort_odors, panel_odor_orders
 from hong2p import viz
 from hong2p.viz import with_panel_orders, no_constrained_layout
 from hong2p.xarray import move_all_coords_to_index
-from hong2p.util import add_group_id
+from hong2p.util import add_group_id, dff_latex
 
 
 # These both correspond to the typical presentation order in the non-pair recording,
@@ -21,6 +23,9 @@ panel2name_order = {
     # TODO TODO how to expand to support case where we want to have the option of
     # including thet pair data?
     # TODO here and elsewhere, probably rename '~kiwi' to 'kiwi mix'
+    # (and/or 'control mix' to just 'mix', though that would risk ambiguity if ever done
+    # for more than just plotting...)
+    # + 'pfo @ 0' -> 'pfo'
     'kiwi': ['pfo', 'EtOH', 'IAol', 'IAA', 'EA', 'EB', '~kiwi'],
     'control': ['pfo', 'MS', 'VA', 'FUR', '2H', 'OCT', 'control mix'],
 }
@@ -29,8 +34,14 @@ panel_order = list(panel2name_order.keys())
 # TODO maybe pick title automatically based on metadata on corr (+ require that extra
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
-def plot_corr(corr: xr.DataArray, *, panel=None, title='') -> Figure:
+def plot_corr(corr: xr.DataArray, panel: str, *, title='') -> Figure:
     """Shows correlations between representations of panel odors.
+
+    Args:
+        corr: pairwise correlations betweeen all odors in panel, of shape
+            (# odors, # odors)
+
+        panel: 'kiwi'/'control'
     """
 
     if panel not in panel2name_order.keys():
@@ -95,11 +106,15 @@ def plot_corr(corr: xr.DataArray, *, panel=None, title='') -> Figure:
     return fig
 
 
+activation_col2label = {
+    'mean_dff': f'mean {dff_latex}',
+}
+
 @no_constrained_layout
 # TODO maybe give more generic name? (potentially factoring out core and calling that w/
 # fn still of this name?)
-def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
-    color_flies=False, _checks=False) -> sns.FacetGrid:
+def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
+    ylabel: Optional[str] = None, color_flies=False, _checks=False) -> sns.FacetGrid:
     """Shows activation strength of each odor in each panel.
 
     Args:
@@ -113,6 +128,10 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
             - Column specified by `activation_col`
 
         activation_col: the Y-axis variable
+
+        ylabel: label for Y-axis. If not passed, will check whether
+            natmix.viz.activation_col2label has a label for the current activation_col.
+            Otherwise, will just use the column name.
 
         color_flies: if True, will color points to indicate fly identity (shared across
             facets), as well as connecting points from the same fly together
@@ -148,31 +167,47 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
         aspect=1,
     )
 
-    if color_flies:
-        shared_facet_kws['hue'] = 'fly_id'
+    if ylabel is None:
+        if activation_col in activation_col2label:
+            ylabel = activation_col2label[activation_col]
+        else:
+            ylabel = activation_col
 
-        # TODO check if equiv to just using str 'hls'
+    if color_flies:
         # TODO do w/o numpy call if easy way (-> remove np import)
         n_flies = df.fly_id.nunique()
         fly_colors = sns.color_palette('hls', n_flies)
         fly_id_palette = dict(zip(np.unique(df.fly_id), fly_colors))
-        # TODO make a function to add alpha to existing color_palette?
-        # (color_palette as_cmap=True kwarg might or might not be useful for that)
-        shared_facet_kws['palette'] = fly_id_palette
-        #shared_facet_kws['palette'] = 'hls'
+
+        #shared_facet_kws['hue'] = 'fly_id'
+        # TODO check if equiv to just using str 'hls'
+        #shared_facet_kws['palette'] = fly_id_palette
+
+        # TODO check that (w/o dodge=True) plots are same as if we let FacetGrid handle
+        # these kwargs
+        plot_fn_kws['hue'] = 'fly_id'
+        plot_fn_kws['palette'] = fly_id_palette
+        plot_fn_kws['dodge'] = True
 
         def pointplot(*args, **kwargs):
-            # TODO get dodge to actually visibly work
-            return sns.pointplot(*args, dodge=4.0, **kwargs)
+            # NOTE: not possible to change alpha via palette passed in, at least not
+            # with this pointplot function and seaborn 0.11.2
+            return sns.pointplot(*args,
+                #linestyles='dotted',
+                scale=0.5,
+                **kwargs
+            )
 
         unwrapped_plot_fns = [pointplot]
-
-        # TODO de-emph (/hide?) lines connecting points?
     else:
+        ci = 95
+        ylabel += f' (with {ci:.0f}% CI)'
+
+        # TODO TODO maybe include these on the color_flies=True plot anyway?
+        # do i really need two version of this plot?
         def just_err_barplot(*args, **kwargs):
             return sns.barplot(*args,
-                # TODO do i want default ci=95 here?
-                # TODO TODO label ci on plot
+                ci=ci,
                 capsize=0.2,
                 facecolor=(1, 1, 1, 0),
                 errcolor=(0, 0, 0, 1.0),
@@ -180,11 +215,16 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
                 **kwargs
             )
 
+        _ax_id2color = dict()
         def swarmplot(*args, **kwargs):
 
-            # TODO why was FacetGrid + map_dataframe already setting
-            # color=<some constant 3-tuple indicating that default blue>
-            # ...when i am not using any hue/color/palette kwargs in this case?
+            ax_id = id(plt.gca())
+            curr_color = kwargs['color']
+            if ax_id in _ax_id2color:
+                assert curr_color == _ax_id2color[ax_id]
+            else:
+                _ax_id2color[ax_id] = curr_color
+
             kwargs['color'] = (0, 0, 0)
 
             with warnings.catch_warnings():
@@ -201,6 +241,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
 
         unwrapped_plot_fns = [just_err_barplot, swarmplot]
 
+
     plot_fns = [with_panel_orders(fn, panel2order) for fn in unwrapped_plot_fns]
 
     # This still doesn't drop stuff thats in the order but has no data for the panel.
@@ -209,22 +250,23 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
     for plot_fn in plot_fns:
         g.map_dataframe(plot_fn, **plot_fn_kws)
 
-    # TODO make ylabel nice
-
     # TODO TODO also use fly_id_palette for testing against this plot
     #g = sns.catplot(**plot_fn_kws, **shared_facet_kws, kind='point', legend=False)
 
     g.set_titles('{col_name}')
 
-    # TODO get that latex str + maybe just call that helper fn i had to only show xlabel
-    # once, when the label is shared
-    #g.set_axis_labels('Mean dF/F')
+    # This looks kinda nice, but for arbtrary length text, the labelpad value can't
+    # really just be hardcoded to one thing, and I'm not sure how to figure out what it
+    # should be for a given label contents.
+    # TODO could using constrained layout work if we don't do g.tight_layout() below?
+    # default labelpad=4
+    #g.set_ylabels(ylabel, rotation=0, labelpad=30)
 
-    # TODO try 45?
+    g.set_ylabels(ylabel)
+
+    # 45 made it look like there was an offset, as if the labels were supposed to label
+    # something further to the right than intended.
     g.set_xticklabels(rotation=90)
-
-    # With a lot of flies, I don't think it's worth it.
-    #g.add_legend(title='Fly')
 
     g.tight_layout()
 
@@ -237,7 +279,6 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
         # seasborn + wrapper)
         # TODO otherwise, homebrew some equality check comparing lines/points/colors,
         # maybe? (maybe using ax.get_children() or ax.get_lines()?)
-        import matplotlib.pyplot as plt
         for panel, order in panel2order.items():
             fig, ax = plt.subplots()
 
