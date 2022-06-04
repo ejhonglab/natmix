@@ -73,7 +73,7 @@
 
 <span class="kn">from</span> <span class="nn">hong2p.olf</span> <span class="kn">import</span> <span class="n">format_mix_from_strs</span><span class="p">,</span> <span class="n">sort_odors</span><span class="p">,</span> <span class="n">panel_odor_orders</span>
 <span class="kn">from</span> <span class="nn">hong2p</span> <span class="kn">import</span> <span class="n">viz</span>
-<span class="kn">from</span> <span class="nn">hong2p.viz</span> <span class="kn">import</span> <span class="n">with_panel_orders</span>
+<span class="kn">from</span> <span class="nn">hong2p.viz</span> <span class="kn">import</span> <span class="n">with_panel_orders</span><span class="p">,</span> <span class="n">no_constrained_layout</span>
 <span class="kn">from</span> <span class="nn">hong2p.xarray</span> <span class="kn">import</span> <span class="n">move_all_coords_to_index</span>
 <span class="kn">from</span> <span class="nn">hong2p.util</span> <span class="kn">import</span> <span class="n">add_group_id</span>
 
@@ -159,11 +159,11 @@
     <span class="k">return</span> <span class="n">fig</span></div>
 
 
+<div class="viewcode-block" id="plot_activation_strength"><a class="viewcode-back" href="../../apidoc/natmix.viz.html#natmix.viz.plot_activation_strength">[docs]</a><span class="nd">@no_constrained_layout</span>
 <span class="c1"># TODO maybe give more generic name? (potentially factoring out core and calling that w/</span>
 <span class="c1"># fn still of this name?)</span>
-<span class="c1"># TODO remove _plot_fn kwarg after settling on one for color_flies=False</span>
-<div class="viewcode-block" id="plot_activation_strength"><a class="viewcode-back" href="../../apidoc/natmix.viz.html#natmix.viz.plot_activation_strength">[docs]</a><span class="k">def</span> <span class="nf">plot_activation_strength</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">activation_col</span><span class="o">=</span><span class="s1">&#39;mean_dff&#39;</span><span class="p">,</span>
-    <span class="n">color_flies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_plot_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">plot_activation_strength</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">activation_col</span><span class="o">=</span><span class="s1">&#39;mean_dff&#39;</span><span class="p">,</span>
+    <span class="n">color_flies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Shows activation strength of each odor in each panel.</span>
 
 <span class="sd">    Args:</span>
@@ -200,12 +200,16 @@
     <span class="n">panel2order</span> <span class="o">=</span> <span class="n">panel_odor_orders</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">panel2name_order</span><span class="p">)</span>
 
     <span class="n">plot_fn_kws</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-        <span class="n">x</span><span class="o">=</span><span class="s1">&#39;odor&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">activation_col</span> <span class="c1">#, order=order</span>
+        <span class="n">x</span><span class="o">=</span><span class="s1">&#39;odor&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">activation_col</span>
     <span class="p">)</span>
 
     <span class="c1"># Just the ones shared between FacetGrid constructor and catplot kwargs.</span>
     <span class="n">shared_facet_kws</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;panel&#39;</span><span class="p">,</span> <span class="n">col_order</span><span class="o">=</span><span class="n">panel_order</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="c1"># &quot;Height (in inches) of each facet&quot;</span>
+        <span class="n">height</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="c1"># &quot;Aspect ratio of each facet, so that aspect * height gives the width&quot;</span>
+        <span class="n">aspect</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">color_flies</span><span class="p">:</span>
@@ -216,37 +220,61 @@
         <span class="n">n_flies</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">fly_id</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
         <span class="n">fly_colors</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">color_palette</span><span class="p">(</span><span class="s1">&#39;hls&#39;</span><span class="p">,</span> <span class="n">n_flies</span><span class="p">)</span>
         <span class="n">fly_id_palette</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">fly_id</span><span class="p">),</span> <span class="n">fly_colors</span><span class="p">))</span>
+        <span class="c1"># TODO make a function to add alpha to existing color_palette?</span>
+        <span class="c1"># (color_palette as_cmap=True kwarg might or might not be useful for that)</span>
         <span class="n">shared_facet_kws</span><span class="p">[</span><span class="s1">&#39;palette&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fly_id_palette</span>
         <span class="c1">#shared_facet_kws[&#39;palette&#39;] = &#39;hls&#39;</span>
 
-        <span class="c1"># TODO TODO TODO test both w/ and w/o hue/palette kwargs above</span>
-        <span class="n">unwrapped_plot_fn</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">pointplot</span>
+        <span class="k">def</span> <span class="nf">pointplot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="c1"># TODO get dodge to actually visibly work</span>
+            <span class="k">return</span> <span class="n">sns</span><span class="o">.</span><span class="n">pointplot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">dodge</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">unwrapped_plot_fns</span> <span class="o">=</span> <span class="p">[</span><span class="n">pointplot</span><span class="p">]</span>
+
+        <span class="c1"># TODO de-emph (/hide?) lines connecting points?</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># TODO delete</span>
-        <span class="k">if</span> <span class="n">_plot_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">unwrapped_plot_fn</span> <span class="o">=</span> <span class="n">_plot_fn</span>
-        <span class="c1">#</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">unwrapped_plot_fn</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">barplot</span>
+        <span class="k">def</span> <span class="nf">just_err_barplot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                <span class="c1"># TODO do i want default ci=95 here?</span>
+                <span class="c1"># TODO TODO label ci on plot</span>
+                <span class="n">capsize</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">facecolor</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">errcolor</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">errwidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
 
-        <span class="c1"># TODO TODO TODO probably use something other than pointplot when</span>
-        <span class="c1"># color_flies=False (don&#39;t care about connecting lines then, and might still</span>
-        <span class="c1"># want a point for each fly, but more focus on CI probably)</span>
+        <span class="k">def</span> <span class="nf">swarmplot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-    <span class="n">plot_fn</span> <span class="o">=</span> <span class="n">with_panel_orders</span><span class="p">(</span><span class="n">unwrapped_plot_fn</span><span class="p">,</span> <span class="n">panel2order</span><span class="p">)</span>
+            <span class="c1"># TODO why was FacetGrid + map_dataframe already setting</span>
+            <span class="c1"># color=&lt;some constant 3-tuple indicating that default blue&gt;</span>
+            <span class="c1"># ...when i am not using any hue/color/palette kwargs in this case?</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">)</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Default marker size=5 (points)</span>
+                    <span class="k">return</span> <span class="n">sns</span><span class="o">.</span><span class="n">swarmplot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">UserWarning</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="c1"># (this is in the message of the warning we are trying to catch)</span>
+                    <span class="k">assert</span> <span class="s1">&#39;points cannot be placed&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="n">err</span>
+
+        <span class="n">unwrapped_plot_fns</span> <span class="o">=</span> <span class="p">[</span><span class="n">just_err_barplot</span><span class="p">,</span> <span class="n">swarmplot</span><span class="p">]</span>
+
+    <span class="n">plot_fns</span> <span class="o">=</span> <span class="p">[</span><span class="n">with_panel_orders</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">panel2order</span><span class="p">)</span> <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">unwrapped_plot_fns</span><span class="p">]</span>
 
     <span class="c1"># This still doesn&#39;t drop stuff thats in the order but has no data for the panel.</span>
     <span class="n">g</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">(</span><span class="o">**</span><span class="n">shared_facet_kws</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="c1">#g.map(plot_fn, &#39;odor&#39;, activation_col)</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">map_dataframe</span><span class="p">(</span><span class="n">plot_fn</span><span class="p">,</span> <span class="o">**</span><span class="n">plot_fn_kws</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">plot_fn</span> <span class="ow">in</span> <span class="n">plot_fns</span><span class="p">:</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">map_dataframe</span><span class="p">(</span><span class="n">plot_fn</span><span class="p">,</span> <span class="o">**</span><span class="n">plot_fn_kws</span><span class="p">)</span>
 
     <span class="c1"># TODO make ylabel nice</span>
-    <span class="c1"># TODO de-emph (/hide?) lines connecting points?</span>
 
-    <span class="c1"># TODO return to using this if i can resolve the order issue (seems like it would</span>
-    <span class="c1"># take changes in my seaborn fork). in the meantime, may still want to compare</span>
-    <span class="c1"># current plot to this to help ensure correctness of current plot.</span>
     <span class="c1"># TODO TODO also use fly_id_palette for testing against this plot</span>
     <span class="c1">#g = sns.catplot(**plot_fn_kws, **shared_facet_kws, kind=&#39;point&#39;, legend=False)</span>
 
@@ -264,7 +292,6 @@
 
     <span class="n">g</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 
-
     <span class="c1"># TODO delete / somehow turn into test, after verifying it matches up w/ facetgrid</span>
     <span class="c1"># stuff using with_panel_orders</span>
     <span class="k">if</span> <span class="n">_checks</span><span class="p">:</span>
@@ -277,13 +304,16 @@
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="k">for</span> <span class="n">panel</span><span class="p">,</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">panel2order</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
-            <span class="n">unwrapped_plot_fn</span><span class="p">(</span><span class="o">**</span><span class="n">plot_fn_kws</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
-                <span class="c1"># TODO TODO TODO might need to make a palette in advance, and share</span>
-                <span class="c1"># between two plotting methods, to make comparable...</span>
-                <span class="n">hue</span><span class="o">=</span><span class="s1">&#39;fly_id&#39;</span> <span class="k">if</span> <span class="n">color_flies</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-                <span class="n">palette</span><span class="o">=</span><span class="n">fly_id_palette</span> <span class="k">if</span> <span class="n">color_flies</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-                <span class="c1">#palette=&#39;hls&#39;,</span>
-            <span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">unwrapped_plot_fn</span> <span class="ow">in</span> <span class="n">unwrapped_plot_fns</span><span class="p">:</span>
+                <span class="n">unwrapped_plot_fn</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">plot_fn_kws</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
+                    <span class="c1"># TODO TODO TODO might need to make a palette in advance, and share</span>
+                    <span class="c1"># between two plotting methods, to make comparable...</span>
+                    <span class="n">hue</span><span class="o">=</span><span class="s1">&#39;fly_id&#39;</span> <span class="k">if</span> <span class="n">color_flies</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">palette</span><span class="o">=</span><span class="n">fly_id_palette</span> <span class="k">if</span> <span class="n">color_flies</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="c1">#palette=&#39;hls&#39;,</span>
+                <span class="p">)</span>
+
             <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">panel</span><span class="p">)</span>
 

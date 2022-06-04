@@ -9,7 +9,7 @@ import numpy as np
 
 from hong2p.olf import format_mix_from_strs, sort_odors, panel_odor_orders
 from hong2p import viz
-from hong2p.viz import with_panel_orders
+from hong2p.viz import with_panel_orders, no_constrained_layout
 from hong2p.xarray import move_all_coords_to_index
 from hong2p.util import add_group_id
 
@@ -95,11 +95,11 @@ def plot_corr(corr: xr.DataArray, *, panel=None, title='') -> Figure:
     return fig
 
 
+@no_constrained_layout
 # TODO maybe give more generic name? (potentially factoring out core and calling that w/
 # fn still of this name?)
-# TODO remove _plot_fn kwarg after settling on one for color_flies=False
 def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
-    color_flies=False, _checks=False, _plot_fn=None) -> sns.FacetGrid:
+    color_flies=False, _checks=False) -> sns.FacetGrid:
     """Shows activation strength of each odor in each panel.
 
     Args:
@@ -136,12 +136,16 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
     panel2order = panel_odor_orders(df, panel2name_order)
 
     plot_fn_kws = dict(
-        x='odor', y=activation_col #, order=order
+        x='odor', y=activation_col
     )
 
     # Just the ones shared between FacetGrid constructor and catplot kwargs.
     shared_facet_kws = dict(
         data=df, col='panel', col_order=panel_order, sharex=False,
+        # "Height (in inches) of each facet"
+        height=5,
+        # "Aspect ratio of each facet, so that aspect * height gives the width"
+        aspect=1,
     )
 
     if color_flies:
@@ -152,37 +156,61 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
         n_flies = df.fly_id.nunique()
         fly_colors = sns.color_palette('hls', n_flies)
         fly_id_palette = dict(zip(np.unique(df.fly_id), fly_colors))
+        # TODO make a function to add alpha to existing color_palette?
+        # (color_palette as_cmap=True kwarg might or might not be useful for that)
         shared_facet_kws['palette'] = fly_id_palette
         #shared_facet_kws['palette'] = 'hls'
 
-        # TODO TODO TODO test both w/ and w/o hue/palette kwargs above
-        unwrapped_plot_fn = sns.pointplot
+        def pointplot(*args, **kwargs):
+            # TODO get dodge to actually visibly work
+            return sns.pointplot(*args, dodge=4.0, **kwargs)
+
+        unwrapped_plot_fns = [pointplot]
+
+        # TODO de-emph (/hide?) lines connecting points?
     else:
-        # TODO delete
-        if _plot_fn is not None:
-            unwrapped_plot_fn = _plot_fn
-        #
-        else:
-            unwrapped_plot_fn = sns.barplot
+        def just_err_barplot(*args, **kwargs):
+            return sns.barplot(*args,
+                # TODO do i want default ci=95 here?
+                # TODO TODO label ci on plot
+                capsize=0.2,
+                facecolor=(1, 1, 1, 0),
+                errcolor=(0, 0, 0, 1.0),
+                errwidth=1.5,
+                **kwargs
+            )
 
-        # TODO TODO TODO probably use something other than pointplot when
-        # color_flies=False (don't care about connecting lines then, and might still
-        # want a point for each fly, but more focus on CI probably)
+        def swarmplot(*args, **kwargs):
 
-    plot_fn = with_panel_orders(unwrapped_plot_fn, panel2order)
+            # TODO why was FacetGrid + map_dataframe already setting
+            # color=<some constant 3-tuple indicating that default blue>
+            # ...when i am not using any hue/color/palette kwargs in this case?
+            kwargs['color'] = (0, 0, 0)
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings('error')
+
+                try:
+                    # Default marker size=5 (points)
+                    return sns.swarmplot(*args, alpha=0.4, size=5, **kwargs)
+
+                except UserWarning as err:
+                    # (this is in the message of the warning we are trying to catch)
+                    assert 'points cannot be placed' in str(err)
+                    raise err
+
+        unwrapped_plot_fns = [just_err_barplot, swarmplot]
+
+    plot_fns = [with_panel_orders(fn, panel2order) for fn in unwrapped_plot_fns]
 
     # This still doesn't drop stuff thats in the order but has no data for the panel.
     g = sns.FacetGrid(**shared_facet_kws, dropna=True)
 
-    #g.map(plot_fn, 'odor', activation_col)
-    g.map_dataframe(plot_fn, **plot_fn_kws)
+    for plot_fn in plot_fns:
+        g.map_dataframe(plot_fn, **plot_fn_kws)
 
     # TODO make ylabel nice
-    # TODO de-emph (/hide?) lines connecting points?
 
-    # TODO return to using this if i can resolve the order issue (seems like it would
-    # take changes in my seaborn fork). in the meantime, may still want to compare
-    # current plot to this to help ensure correctness of current plot.
     # TODO TODO also use fly_id_palette for testing against this plot
     #g = sns.catplot(**plot_fn_kws, **shared_facet_kws, kind='point', legend=False)
 
@@ -200,7 +228,6 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
 
     g.tight_layout()
 
-
     # TODO delete / somehow turn into test, after verifying it matches up w/ facetgrid
     # stuff using with_panel_orders
     if _checks:
@@ -213,13 +240,16 @@ def plot_activation_strength(df: pd.DataFrame, activation_col='mean_dff',
         import matplotlib.pyplot as plt
         for panel, order in panel2order.items():
             fig, ax = plt.subplots()
-            unwrapped_plot_fn(**plot_fn_kws, data=df, order=order,
-                # TODO TODO TODO might need to make a palette in advance, and share
-                # between two plotting methods, to make comparable...
-                hue='fly_id' if color_flies else None,
-                palette=fly_id_palette if color_flies else None,
-                #palette='hls',
-            )
+
+            for unwrapped_plot_fn in unwrapped_plot_fns:
+                unwrapped_plot_fn(ax=ax, **plot_fn_kws, data=df, order=order,
+                    # TODO TODO TODO might need to make a palette in advance, and share
+                    # between two plotting methods, to make comparable...
+                    hue='fly_id' if color_flies else None,
+                    palette=fly_id_palette if color_flies else None,
+                    #palette='hls',
+                )
+
             plt.xticks(rotation=90)
             ax.set_title(panel)
 
