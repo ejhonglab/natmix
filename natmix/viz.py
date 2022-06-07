@@ -296,6 +296,22 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
             print(f'{x}:', getattr(g.fig.subplotpars, x))
         print()
 
+    # All values in here taken from getting these attributes from g.fig.subplotpars,
+    # running on my computer right after the g.tight_layout() call above. At least when
+    # paired with the bbox_inches=None argument to savefig call, this seems to produce
+    # the expected result on my computer. Yet to be seen whether it also fixes the issue
+    # on Remy's end (where x/ylabel, potentially among other things, were not displayed,
+    # perhapse because they were cut off).
+    g.fig.subplots_adjust(left=0.0854, right=0.985, bottom=0.3178, top=0.9313,
+        wspace=0.04515, hspace=0.2
+    )
+
+    if _debug:
+        print('after manual g.fig.subplots_adjust:')
+        for x in sp_vars:
+            print(f'{x}:', getattr(g.fig.subplotpars, x))
+        print()
+
     # TODO delete / somehow turn into test, after verifying it matches up w/ facetgrid
     # stuff using with_panel_orders
     if _checks:
