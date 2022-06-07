@@ -114,7 +114,8 @@ activation_col2label = {
 # TODO maybe give more generic name? (potentially factoring out core and calling that w/
 # fn still of this name?)
 def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
-    ylabel: Optional[str] = None, color_flies=False, _checks=False) -> sns.FacetGrid:
+    ylabel: Optional[str] = None, color_flies=False, _checks=False, _debug=False
+    ) -> sns.FacetGrid:
     """Shows activation strength of each odor in each panel.
 
     Args:
@@ -268,7 +269,29 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     # something further to the right than intended.
     g.set_xticklabels(rotation=90)
 
+    if _debug:
+        import matplotlib as mpl
+        prefix = 'figure.subplot.'
+        sp_vars = ['left', 'right', 'bottom', 'top', 'wspace', 'hspace']
+
+        print('rcParam defaults:')
+        for x in sp_vars:
+            key = f'{prefix}{x}'
+            print(f'{key}:', mpl.rcParams[key])
+        print()
+
+        print('before tight_layout:')
+        for x in sp_vars:
+            print(f'{x}:', getattr(g.fig.subplotpars, x))
+        print()
+
     g.tight_layout()
+
+    if _debug:
+        print('after tight_layout:')
+        for x in sp_vars:
+            print(f'{x}:', getattr(g.fig.subplotpars, x))
+        print()
 
     # TODO delete / somehow turn into test, after verifying it matches up w/ facetgrid
     # stuff using with_panel_orders
@@ -284,11 +307,8 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
             for unwrapped_plot_fn in unwrapped_plot_fns:
                 unwrapped_plot_fn(ax=ax, **plot_fn_kws, data=df, order=order,
-                    # TODO TODO TODO might need to make a palette in advance, and share
-                    # between two plotting methods, to make comparable...
                     hue='fly_id' if color_flies else None,
                     palette=fly_id_palette if color_flies else None,
-                    #palette='hls',
                 )
 
             plt.xticks(rotation=90)

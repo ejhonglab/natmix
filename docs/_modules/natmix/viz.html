@@ -178,7 +178,8 @@
 <span class="c1"># TODO maybe give more generic name? (potentially factoring out core and calling that w/</span>
 <span class="c1"># fn still of this name?)</span>
 <span class="k">def</span> <span class="nf">plot_activation_strength</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">activation_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span><span class="s1">&#39;mean_dff&#39;</span><span class="p">,</span>
-    <span class="n">ylabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">color_flies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">:</span>
+    <span class="n">ylabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">color_flies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_debug</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Shows activation strength of each odor in each panel.</span>
 
 <span class="sd">    Args:</span>
@@ -332,7 +333,29 @@
     <span class="c1"># something further to the right than intended.</span>
     <span class="n">g</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
 
+    <span class="k">if</span> <span class="n">_debug</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;figure.subplot.&#39;</span>
+        <span class="n">sp_vars</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="s1">&#39;wspace&#39;</span><span class="p">,</span> <span class="s1">&#39;hspace&#39;</span><span class="p">]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;rcParam defaults:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">sp_vars</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">x</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">:&#39;</span><span class="p">,</span> <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">()</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;before tight_layout:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">sp_vars</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">:&#39;</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">subplotpars</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">()</span>
+
     <span class="n">g</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">_debug</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;after tight_layout:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">sp_vars</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">:&#39;</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">subplotpars</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">()</span>
 
     <span class="c1"># TODO delete / somehow turn into test, after verifying it matches up w/ facetgrid</span>
     <span class="c1"># stuff using with_panel_orders</span>
@@ -348,11 +371,8 @@
 
             <span class="k">for</span> <span class="n">unwrapped_plot_fn</span> <span class="ow">in</span> <span class="n">unwrapped_plot_fns</span><span class="p">:</span>
                 <span class="n">unwrapped_plot_fn</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">plot_fn_kws</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
-                    <span class="c1"># TODO TODO TODO might need to make a palette in advance, and share</span>
-                    <span class="c1"># between two plotting methods, to make comparable...</span>
                     <span class="n">hue</span><span class="o">=</span><span class="s1">&#39;fly_id&#39;</span> <span class="k">if</span> <span class="n">color_flies</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
                     <span class="n">palette</span><span class="o">=</span><span class="n">fly_id_palette</span> <span class="k">if</span> <span class="n">color_flies</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-                    <span class="c1">#palette=&#39;hls&#39;,</span>
                 <span class="p">)</span>
 
             <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
