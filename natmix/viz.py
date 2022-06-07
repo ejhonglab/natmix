@@ -271,6 +271,9 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
     if _debug:
         import matplotlib as mpl
+
+        print(f'{color_flies=}')
+
         prefix = 'figure.subplot.'
         sp_vars = ['left', 'right', 'bottom', 'top', 'wspace', 'hspace']
 
