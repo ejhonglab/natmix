@@ -1,6 +1,10 @@
 
 import warnings
-from typing import Optional
+from typing import Optional, Union
+from pprint import pformat
+# TODO delete
+import traceback
+#
 
 import pandas as pd
 import xarray as xr
@@ -9,7 +13,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-from hong2p.olf import format_mix_from_strs, sort_odors, panel_odor_orders
+from hong2p.olf import (format_mix_from_strs, sort_odors, panel_odor_orders,
+    solvent_str, parse_odor_name
+)
 from hong2p import viz
 from hong2p.viz import with_panel_orders, no_constrained_layout
 from hong2p.xarray import move_all_coords_to_index
@@ -31,10 +37,66 @@ panel2name_order = {
 }
 panel_order = list(panel2name_order.keys())
 
+
+# TODO test
+# TODO move to hong2p.olf (+ add module fns for setting / adding to a module level
+# panel -> odor_names state, or at least add kwarg for it)
+def get_panel(arr: Union[xr.DataArray, pd.DataFrame]) -> str:
+    """Returns str name for panel, given data with 'odor1' column/coordinate.
+
+    Input must have all the odors from a panel and nothing extra, beyond solvent/pfo,
+    otherwise a ValueError is raised.
+
+    Notes:
+    - no handling of abbreviated/not odors here. names must match what would be
+      parsed from names in panel2name_order above (currently abbreviations)
+
+    - ignoring odor concentration, for the moment.
+    """
+
+    # actually just ignoring odor2 now, cause some inputs we might want to pass this fn
+    # could also have the pair data, and we don't want that to cause failure.
+    #if set(arr.odor2.values) != {solvent_str}:
+
+    solvent_names = {'pfo', solvent_str}
+
+    arr_names = {parse_odor_name(o) for o in arr.odor1.values
+        if o not in solvent_names
+    }
+
+    # In case there are some odor strings like 'pfo @ 0', which I think I have in some
+    # places.
+    arr_names -= solvent_names
+
+    arr_panel = None
+    for panel, panel_names in panel2name_order.items():
+        panel_names = set(panel_names) - solvent_names
+        missing_panel_odors = panel_names - arr_names
+        if len(missing_panel_odors) > 0:
+            continue
+
+        extra_odors = arr_names - panel_names
+        if len(extra_odors) > 0:
+            raise ValueError(f'panel for {pformat(arr_names)} could not be identified.'
+                f'\nhad all {panel} odors, but also had these non-solvent odors:\n'
+                f'{extra_odors}\narr must have only data from one panel!'
+            )
+
+        assert arr_panel is None, 'multiple matching panels'
+        arr_panel = panel
+
+    if arr_panel is None:
+        raise ValueError(f'panel for {arr_names} could not be identified from:\n' +
+            pformat(panel2name_order)
+        )
+
+    return arr_panel
+
+
 # TODO maybe pick title automatically based on metadata on corr (+ require that extra
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
-def plot_corr(corr: xr.DataArray, panel: str, *, title='') -> Figure:
+def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='') -> Figure:
     """Shows correlations between representations of panel odors.
 
     Args:
@@ -43,29 +105,52 @@ def plot_corr(corr: xr.DataArray, panel: str, *, title='') -> Figure:
 
         panel: 'kiwi'/'control'
     """
+    name_order = None
 
-    if panel not in panel2name_order.keys():
-        raise ValueError('must pass panel keyword argument, from among '
-            f'{list(panel2name_order.keys())}'
-        )
+    # TODO deprecate panel argument once get_panel is working
+    if panel is None:
+        try:
+            panel = get_panel(corr)
+        except ValueError as err:
+            warn_msg = f'{err}\nnot ordering correlation matrix!'
+            warnings.warn(warn_msg)
+    else:
+        if panel not in panel2name_order.keys():
+            raise ValueError('must pass panel keyword argument, from among '
+                f'{list(panel2name_order.keys())}'
+            )
 
     # TODO maybe factor into hong2p.viz.callable_ticklabels (or similar wrapper
     # to plotting fns) (also may not always want this done here in plot_corr...)
     corr = move_all_coords_to_index(corr)
 
-    # TODO TODO may want to check we have all names from name_order selected
-    # (maybe barring pfo?)
-    name_order = panel2name_order[panel]
+    if panel is not None:
+        # TODO may want to check we have all names from name_order selected
+        # (maybe barring pfo?)
+        name_order = panel2name_order[panel]
 
-    # TODO TODO TODO may need to not rely on sort_odors, or special case handling
-    # of pair experiment data, to make sure we always order the two pair odors in the
-    # same order. since these matrices don't have each exclusively either on the rows or
-    # columns, can't use transpose_sort_key i had used earlier for this
-    # TODO TODO TODO update sorting to work w/ pair experiment input too, then stop
+    # Assuming input does not contain pair data if this variable not present.
+    has_is_pair = 'is_pair' in corr.get_index('odor').names
+
+    # TODO TODO update sorting to work w/ pair experiment input too, then stop
     # dropping that data here
     # TODO in the meantime, warn if input data has any is_pair[_b] == True
-    corr = corr.sel(odor=(corr.is_pair == False), odor_b=(corr.is_pair_b == False)
-        ).copy()
+    # TODO TODO TODO TODO restore (why did i even have this again? for the ij ROI
+    # analysis that used this fn, right? test!)
+    if has_is_pair:
+        #'''
+        try:
+            corr = corr.sel(
+                odor=(corr.is_pair == False), odor_b=(corr.is_pair_b == False)
+            ).copy()
+
+        except:
+            print('ERROR IN PLOT_CORR:')
+            print(traceback.format_exc())
+            print()
+            print('END ERROR IN PLOT_CORR')
+            import ipdb; ipdb.set_trace()
+        #'''
 
     if len(corr) == 0:
         raise ValueError('corr did not contain any non-pair experiment data! '
@@ -78,7 +163,9 @@ def plot_corr(corr: xr.DataArray, panel: str, *, title='') -> Figure:
     # TODO TODO or make a hong2p.xarray fn for sorting indices w/ artibrary key (fns)
     # like to copy the pandas behavior i take advantage of
     corr = corr.to_pandas()
-    corr = sort_odors(corr, name_order=name_order)
+
+    if name_order is not None:
+        corr = sort_odors(corr, name_order=name_order)
 
     # TODO TODO might want to select between one of two orders based on whether we only
     # have is_pair==False data or not?
@@ -142,6 +229,9 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     Currently only plotting data where `is_pair` is False.
     """
 
+    # TODO err if we don't have both 'kiwi' / 'control' left?
+    # or maybe warn if we only have one?
+    #
     # Dropping 'glomeruli_diagnostics' panel, if present
     df = df[df.panel.isin(panel2name_order)].copy()
 
@@ -149,7 +239,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
     nonpair_df = df[~df.is_pair].copy()
     nonpair_df.rename(columns={'odor1': 'odor'}, inplace=True)
-    assert set(nonpair_df.odor2.unique()) == {'solvent'}
+    assert set(nonpair_df.odor2.unique()) == {solvent_str}
 
     df = nonpair_df
 
