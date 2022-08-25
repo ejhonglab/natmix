@@ -60,6 +60,7 @@ def get_panel(arr: Union[xr.DataArray, pd.DataFrame]) -> str:
 
     solvent_names = {'pfo', solvent_str}
 
+    # TODO this actually work w/ (~equiv formatted) DataFrame input?
     arr_names = {parse_odor_name(o) for o in arr.odor1.values
         if o not in solvent_names
     }
@@ -93,10 +94,50 @@ def get_panel(arr: Union[xr.DataArray, pd.DataFrame]) -> str:
     return arr_panel
 
 
+def drop_mix_dilutions(data):
+    """Drops '~kiwi' / 'control mix' at concentrations other than undiluted ('@ 0').
+    """
+    mix_names = ('~kiwi', 'control mix')
+
+    def is_dilution(arr):
+        """Returns boolean vector of length arr True were arr contains mix dilution data
+        """
+        return arr.str.startswith(name) & ~ arr.str.endswith('@ 0')
+
+    #if isinstance(data, pd.DataFrame):
+    dilution_rows = None
+    dilution_cols = None
+    for name in mix_names:
+        curr_dilution_rows = is_dilution(data.odor1)
+        if dilution_rows is None:
+            dilution_rows = curr_dilution_rows
+        else:
+            dilution_rows = dilution_rows | curr_dilution_rows
+
+        # Should currently only be True for correlation matrix DataArray input.
+        if hasattr(data, 'odor_b'):
+            curr_dilution_cols = is_dilution(data.odor1_b)
+            if dilution_cols is None:
+                dilution_cols = curr_dilution_cols
+            else:
+                dilution_cols = dilution_cols | curr_dilution_cols
+
+    if isinstance(data, pd.DataFrame):
+        assert dilution_cols is None
+        # TODO maybe just do data[dilutions_rows].copy(), cause simpler
+        return data.drop(index=dilution_rows[dilution_rows].index)
+    else:
+        # TODO better way?
+        data = data.where(~ dilution_rows, drop=True)
+        data = data.where(~ dilution_cols, drop=True)
+        return data
+
+
 # TODO maybe pick title automatically based on metadata on corr (+ require that extra
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
-def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='') -> Figure:
+def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
+    mix_dilutions=False) -> Figure:
     """Shows correlations between representations of panel odors.
 
     Args:
@@ -106,6 +147,9 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='') -> F
         panel: 'kiwi'/'control'
     """
     name_order = None
+
+    if not mix_dilutions:
+        corr = drop_mix_dilutions(corr)
 
     # TODO deprecate panel argument once get_panel is working
     if panel is None:
@@ -201,8 +245,8 @@ activation_col2label = {
 # TODO maybe give more generic name? (potentially factoring out core and calling that w/
 # fn still of this name?)
 def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
-    ylabel: Optional[str] = None, color_flies=False, _checks=False, _debug=False
-    ) -> sns.FacetGrid:
+    ylabel: Optional[str] = None, color_flies=False, mix_dilutions=False, _checks=False,
+    _debug=False) -> sns.FacetGrid:
     """Shows activation strength of each odor in each panel.
 
     Args:
@@ -228,6 +272,8 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
     Currently only plotting data where `is_pair` is False.
     """
+    if not mix_dilutions:
+        df = drop_mix_dilutions(df)
 
     # TODO err if we don't have both 'kiwi' / 'control' left?
     # or maybe warn if we only have one?
