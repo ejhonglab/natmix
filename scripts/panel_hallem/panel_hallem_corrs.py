@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
+from pprint import pprint
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from hong2p import viz
+
+# TODO use
+#from natmix import plot_corr
 
 
 def main():
@@ -75,11 +80,74 @@ def main():
     df.sort_index(axis='columns', inplace=True)
 
     fig, _ = viz.matshow(df, dpi=300)
-    fig.savefig('panel_hallem.png')
+    fig.savefig('hallem_panel.png')
 
     viz.matshow(df.T.corr())
 
-    # TODO savefigs
+    # TODO save above figs
+
+    panel2odors = {
+        'kiwi': [
+            'ethanol',
+            # This one is synonymous with 'isoamyl alcohol' / '3-methyl-1-butanol'
+            #'3-methylbutanol',
+            'isoamyl alcohol',
+            # This one is synonymous with 'isoamyl acetate'.
+            # https://pubchem.ncbi.nlm.nih.gov/compound/Isoamyl-acetate
+            #'isopentyl acetate',
+            'isoamyl acetate',
+            'ethyl acetate',
+            'ethyl butyrate',
+        ],
+        'control': [
+            # Synonymous with 'valeric acid'
+            #'pentanoic acid',
+            'valeric acid',
+            'methyl salicylate',
+            'furfural',
+            '2-heptanone',
+            '1-octen-3-ol',
+        ],
+    }
+    has_closer_conc = {
+        # -3.5
+        'ethyl butyrate': [-4],
+        # -4.2
+        'ethyl acetate': [-4],
+
+        # -5. could try either -4 or -6
+        '2-heptanone': [-4, -6],
+        # -3. could try -4, but -2 might be closer...
+        '1-octen-3-ol': [None, -4],
+    }
+
+    for panel, podors in panel2odors.items():
+        podors_closer_concs = []
+        for o in podors:
+            if o in has_closer_conc:
+                for c in has_closer_conc[o]:
+                    ostr = f'{o} {c}' if c is not None else o
+                    podors_closer_concs.append(ostr)
+            else:
+                podors_closer_concs.append(o)
+
+        pprint(podors)
+        pprint(podors_closer_concs)
+        print()
+
+        pdf = df.loc[podors]
+        pdf = pd.DataFrame(index=pdf.index.drop_duplicates(), data=pdf.drop_duplicates())
+        # TODO deal w/ cause of eta being duplicated
+
+        f1, _ = viz.matshow(pdf.T.corr())
+        f1.savefig(f'{panel}_all_default_minus2.png')
+
+        pdf = df.loc[podors_closer_concs]
+        pdf = pd.DataFrame(index=pdf.index.drop_duplicates(), data=pdf.drop_duplicates())
+
+        f2, _ = viz.matshow(pdf.T.corr())
+        f2.savefig(f'{panel}_with_closer.png')
+        # TODO savefig
 
     plt.show()
     import ipdb; ipdb.set_trace()
