@@ -127,7 +127,7 @@ def drop_mix_dilutions(data):
         # TODO maybe just do data[dilutions_rows].copy(), cause simpler
         return data.drop(index=dilution_rows[dilution_rows].index)
     else:
-        # TODO better way?
+        # TODO better way? .sel?
         data = data.where(~ dilution_rows, drop=True)
         data = data.where(~ dilution_cols, drop=True)
         return data
@@ -184,9 +184,17 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
     if has_is_pair:
         #'''
         try:
-            corr = corr.sel(
+            # TODO delete if assertion below isn't failing
+            old = corr.sel(
                 odor=(corr.is_pair == False), odor_b=(corr.is_pair_b == False)
             ).copy()
+            #
+
+            # TODO factor out (+ use in al_analysis where i do this)
+            corr = corr.sel(is_pair=False, is_pair_b=False).copy()
+
+            # TODO delete if not failing
+            assert corr.equals(old)
 
         except:
             print('ERROR IN PLOT_CORR:')
