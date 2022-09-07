@@ -137,7 +137,7 @@ def drop_mix_dilutions(data):
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
 def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
-    mix_dilutions=False) -> Figure:
+    mix_dilutions=False, vmin=-0.2, vmax=1.0) -> Figure:
     """Shows correlations between representations of panel odors.
 
     Args:
@@ -238,8 +238,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             # TODO TODO fix. i think it's causing failure when i add a limited
             # amount of pair expt data b/c of duplicate ea -4.2 etc
             group_ticklabels=True,
-            vmin=-0.2,
-            vmax=1.0,
+            vmin=vmin,
+            vmax=vmax,
         )
 
     return fig
