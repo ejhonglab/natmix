@@ -26,8 +26,8 @@ from hong2p.util import add_group_id, dff_latex
 # where things were roughly presented from weakest to strongest (with '~kiwi' being
 # presented at 3 dilutions, from lowest to highest, all together).
 panel2name_order = {
-    # TODO TODO how to expand to support case where we want to have the option of
-    # including thet pair data?
+    # TODO how to expand to support case where we want to have the option of including
+    # the pair data?
     # TODO here and elsewhere, probably rename '~kiwi' to 'kiwi mix'
     # (and/or 'control mix' to just 'mix', though that would risk ambiguity if ever done
     # for more than just plotting...)
@@ -133,6 +133,21 @@ def drop_mix_dilutions(data):
         return data
 
 
+# TODO maybe warn if called w/ different input (hash sorted (date, fly_num) sequence for
+# lookup?)?
+# TODO parameterize dict return type hint
+def get_fly_id_palette(df: pd.DataFrame) -> dict:
+
+    if 'fly_id' not in df.columns:
+        # This will sort on the ('date', 'fly_num') combinations, by default.
+        add_group_id(df, ['date', 'fly_num'], name='fly_id', inplace=True)
+
+    n_flies = df.fly_id.nunique()
+    fly_colors = sns.color_palette('hls', n_flies)
+    # TODO do w/o numpy call if easy way (-> remove np import). set()?
+    return dict(zip(sorted(np.unique(df.fly_id)), fly_colors))
+
+
 # TODO maybe pick title automatically based on metadata on corr (+ require that extra
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
@@ -176,11 +191,9 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
     # Assuming input does not contain pair data if this variable not present.
     has_is_pair = 'is_pair' in corr.get_index('odor').names
 
-    # TODO TODO update sorting to work w/ pair experiment input too, then stop
-    # dropping that data here
+    # TODO update sorting to work w/ pair experiment input too, then stop dropping that
+    # data here
     # TODO in the meantime, warn if input data has any is_pair[_b] == True
-    # TODO TODO TODO TODO restore (why did i even have this again? for the ij ROI
-    # analysis that used this fn, right? test!)
     if has_is_pair:
         #'''
         try:
@@ -219,8 +232,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
     if name_order is not None:
         corr = sort_odors(corr, name_order=name_order)
 
-    # TODO TODO might want to select between one of two orders based on whether we only
-    # have is_pair==False data or not?
+    # TODO might want to select between one of two orders based on whether we only have
+    # is_pair==False data or not?
 
     xticklabels = format_mix_from_strs
     yticklabels = format_mix_from_strs
@@ -237,6 +250,7 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             # (because the multiple solvent entries i assume)
             # TODO TODO fix. i think it's causing failure when i add a limited
             # amount of pair expt data b/c of duplicate ea -4.2 etc
+            # (still true?)
             group_ticklabels=True,
             vmin=vmin,
             vmax=vmax,
@@ -251,7 +265,11 @@ activation_col2label = {
 
 @no_constrained_layout
 # TODO maybe give more generic name? (potentially factoring out core and calling that w/
-# fn still of this name?)
+# fn still of this name?) (rename activation_col to just 'y')
+# TODO some version of this fn (or a more general fn this one calls) that includes a
+# kwarg for putting vertical (dashed?) lines between level changes after application of
+# some fn / at specific points (e.g. for grouping activation strengths of components vs
+# mix at dilutions, or for grouping certain odor/odor correlations)
 def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     ylabel: Optional[str] = None, color_flies=False, mix_dilutions=False, _checks=False,
     _debug=False) -> sns.FacetGrid:
@@ -289,7 +307,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     # Dropping 'glomeruli_diagnostics' panel, if present
     df = df[df.panel.isin(panel2name_order)].copy()
 
-    df = add_group_id(df[~df.is_pair], ['date', 'fly_num'], name='fly_id')
+    df = df[~df.is_pair].copy()
 
     nonpair_df = df[~df.is_pair].copy()
     nonpair_df.rename(columns={'odor1': 'odor'}, inplace=True)
@@ -319,10 +337,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
             ylabel = activation_col
 
     if color_flies:
-        # TODO do w/o numpy call if easy way (-> remove np import)
-        n_flies = df.fly_id.nunique()
-        fly_colors = sns.color_palette('hls', n_flies)
-        fly_id_palette = dict(zip(np.unique(df.fly_id), fly_colors))
+        fly_id_palette = get_fly_id_palette(df)
 
         #shared_facet_kws['hue'] = 'fly_id'
         # TODO check if equiv to just using str 'hls'
