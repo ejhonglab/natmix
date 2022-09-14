@@ -367,7 +367,8 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
         # do i really need two version of this plot?
         def just_err_barplot(*args, **kwargs):
             return sns.barplot(*args,
-                ci=ci,
+                # Changed from ci=ci, deprecated as of seaborn 0.12
+                errorbar=('ci', ci),
                 capsize=0.2,
                 facecolor=(1, 1, 1, 0),
                 errcolor=(0, 0, 0, 1.0),
