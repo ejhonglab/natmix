@@ -101,28 +101,35 @@ def load_remy_corr(path: Path, drop_repeats_beyond: Optional[int] = 3,
     # TODO TODO TODO compute is_pair[_b]
     # (figure out how remy encodes is_pair, if she even has any of that data)
 
-    # TODO could get stimuli YAML files from Remy, load them here, and compute
-    # is_pair/panel that way, if nothing else
-    is_pair = False
-
     attrs = dataarray.attrs
+
+    movie_type = attrs['movie_type']
 
     date_str = attrs['date_imaged']
     fly_num = attrs['fly_num']
     thorimage = attrs['thorimage']
 
-    panel = 'kiwi' if 'kiwi' in attrs['thorimage'] else 'control'
+    panel = None
+    if 'kiwi' in movie_type:
+        panel = 'kiwi'
+    elif 'control' in movie_type:
+        panel = 'control'
+    else:
+        # NOTE: Remy's code also checked 'validation0' and 'validation1'
+        # TODO relax?
+        raise ValueError('Remy correlation data was not from either kiwi/control panel')
+
+    remy_pair_thorimage_names = (
+        'kiwi_ea_eb_only',
+        'control1_top2_ramps',
+    )
+    is_pair = movie_type in remy_pair_thorimage_names
 
     meta = {
         'date': pd.Timestamp(date_str),
         'fly_num': fly_num,
         'thorimage_id': thorimage,
 
-        # TODO TODO TODO compute panel
-        # TODO do i have a fn for going from odors to panel?
-        #
-        # (just assuming remy is only gonna give me one of these two types of data for
-        # now, and that she always named roughly how i did)
         'panel': panel,
 
         # TODO TODO is movie_type what i need to get pair recording status?
