@@ -42,7 +42,7 @@ def get_fly_id_palette(df: pd.DataFrame) -> dict:
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
 def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
-    mix_dilutions=False, vmin=-0.2, vmax=1.0) -> Figure:
+    mix_dilutions=False, vmin=-0.2, vmax=1.0, **kwargs) -> Figure:
     """Shows correlations between representations of panel odors.
 
     Args:
@@ -50,6 +50,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             (# odors, # odors)
 
         panel: 'kiwi'/'control'
+
+        kwargs: passed thru to `hong2p.viz.matshow`
     """
     name_order = None
 
@@ -61,7 +63,7 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
         try:
             panel = get_panel(corr)
         except ValueError as err:
-            warn_msg = f'{err}\nnot ordering correlation matrix!'
+            warn_msg = f'{err}\nsorting correlation matrix alphabetically!'
             warnings.warn(warn_msg)
     else:
         if panel not in panel2name_order.keys():
@@ -121,6 +123,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
 
     if name_order is not None:
         corr = sort_odors(corr, name_order=name_order)
+    else:
+        corr = sort_odors(corr)
 
     # TODO might want to select between one of two orders based on whether we only have
     # is_pair==False data or not?
@@ -141,9 +145,7 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             # TODO TODO fix. i think it's causing failure when i add a limited
             # amount of pair expt data b/c of duplicate ea -4.2 etc
             # (still true?)
-            group_ticklabels=True,
-            vmin=vmin,
-            vmax=vmax,
+            group_ticklabels=True, vmin=vmin, vmax=vmax, **kwargs
         )
 
     return fig
@@ -196,6 +198,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     #
     # Dropping 'glomeruli_diagnostics' panel, if present
     df = df[df.panel.isin(panel2name_order)].copy()
+    assert len(df) > 0, 'dropped all panels'
 
     df = df[~df.is_pair].copy()
 
