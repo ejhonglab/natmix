@@ -18,11 +18,11 @@ panel2name_order = {
     # (and/or 'control mix' to just 'mix', though that would risk ambiguity if ever done
     # for more than just plotting...)
     # + 'pfo @ 0' -> 'pfo'
-    'kiwi': ['pfo', 'EtOH', 'IAol', 'IAA', 'EA', 'EB', '~kiwi'],
-    'control': ['pfo', 'MS', 'VA', 'FUR', '2H', 'OCT', 'control mix'],
+    'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', '~kiwi'],
+    'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', 'control mix'],
     # TODO make the swap to these at some point (other changes need to be made too)
-    #'kiwi': ['pfo', 'EtOH', 'IAol', 'IAA', 'EA', 'EB', 'kmix'],
-    #'control': ['pfo', 'MS', 'VA', 'FUR', '2H', 'OCT', 'cmix'],
+    #'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'kmix'],
+    #'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', 'cmix'],
 }
 panel_order = list(panel2name_order.keys())
 
@@ -30,6 +30,7 @@ panel_order = list(panel2name_order.keys())
 # TODO test
 # TODO move to hong2p.olf (+ add module fns for setting / adding to a module level
 # panel -> odor_names state, or at least add kwarg for it)
+# TODO allow extra w/ kwarg (as long as we have all the minimum odors?)?
 def get_panel(arr: Union[xr.DataArray, pd.DataFrame]) -> str:
     """Returns str name for panel, given data with 'odor1' column/coordinate.
 
@@ -105,29 +106,33 @@ def dropna_odors(arr: xr.DataArray, _checks=True) -> xr.DataArray:
     return arr
 
 
+# TODO unit test. enumerate dilution_[rows|cols] [not-]null combinations
 def drop_mix_dilutions(data):
     """Drops '~kiwi' / 'control mix' at concentrations other than undiluted ('@ 0').
     """
     mix_names = ('~kiwi', 'control mix')
 
-    def is_dilution(arr):
+    def is_dilution(name, arr):
         """Returns boolean vector of length arr True were arr contains mix dilution data
         """
+        # TODO also support just missing '@' delimiter (if '@ 0' were implied in this
+        # case)?
         return arr.str.startswith(name) & ~ arr.str.endswith('@ 0')
 
-    #if isinstance(data, pd.DataFrame):
     dilution_rows = None
     dilution_cols = None
     for name in mix_names:
-        curr_dilution_rows = is_dilution(data.odor1)
+        curr_dilution_rows = is_dilution(name, data.odor1)
         if dilution_rows is None:
             dilution_rows = curr_dilution_rows
         else:
             dilution_rows = dilution_rows | curr_dilution_rows
 
         # Should currently only be True for correlation matrix DataArray input.
-        if hasattr(data, 'odor_b'):
-            curr_dilution_cols = is_dilution(data.odor1_b)
+        # TODO TODO TODO did i actually want to check 'odor_b' vs 'odor1_b'?
+        # and if the former, did i want 'odor', rather than 'odor1', earlier?
+        if hasattr(data, 'odor1_b'):
+            curr_dilution_cols = is_dilution(name, data.odor1_b)
             if dilution_cols is None:
                 dilution_cols = curr_dilution_cols
             else:
@@ -138,9 +143,21 @@ def drop_mix_dilutions(data):
         # TODO maybe just do data[dilutions_rows].copy(), cause simpler
         return data.drop(index=dilution_rows[dilution_rows].index)
     else:
-        # TODO better way? .sel?
+        # might trigger... would need to revert so something like commented code if so
+        assert dilution_rows is not None
+        assert dilution_cols is not None
+        # TODO TODO TODO why did i decide to comment this again?
+        '''
+        if dilution_rows.any().item():
+            # TODO better way? .sel?
+            data = data.where(~ dilution_rows, drop=True)
+
+        if dilution_cols:
+            data = data.where(~ dilution_cols, drop=True)
+        '''
         data = data.where(~ dilution_rows, drop=True)
         data = data.where(~ dilution_cols, drop=True)
+
         return data
 
 
@@ -175,5 +192,4 @@ def drop_nonlone_pair_expt_odors(arr):
 
     # TODO copy?
     return arr[mask]
-
 
