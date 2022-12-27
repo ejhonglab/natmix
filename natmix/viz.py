@@ -41,8 +41,15 @@ def get_fly_id_palette(df: pd.DataFrame) -> dict:
 # TODO maybe pick title automatically based on metadata on corr (+ require that extra
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
+# TODO if good values for figsize/cbar_shrink seem to depend on data (i.e. odor name
+# lengths), maybe just revert to tight layout (give viz.matshow kwarg for this?)
+# TODO probably want to just force cbar to be same height as matshow Axes anyway?
+# use that + constrained layout?
+# TODO TODO increase figsize / dpi so that corrs don't look quite as blurry as they do
+# now that i added figsize (which is slightly smaller than default)
 def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
-    mix_dilutions=False, vmin=-0.2, vmax=1.0, **kwargs) -> Figure:
+    mix_dilutions=False, vmin=-0.2, vmax=1.0, warn=False, figsize=(5, 4.8),
+    cbar_shrink=0.736, **kwargs) -> Figure:
     """Shows correlations between representations of panel odors.
 
     Args:
@@ -64,7 +71,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             panel = get_panel(corr)
         except ValueError as err:
             warn_msg = f'{err}\nsorting correlation matrix alphabetically!'
-            warnings.warn(warn_msg)
+            if warn:
+                warnings.warn(warn_msg)
     else:
         if panel not in panel2name_order.keys():
             raise ValueError('must pass panel keyword argument, from among '
@@ -145,7 +153,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             # TODO TODO fix. i think it's causing failure when i add a limited
             # amount of pair expt data b/c of duplicate ea -4.2 etc
             # (still true?)
-            group_ticklabels=True, vmin=vmin, vmax=vmax, **kwargs
+            group_ticklabels=True, vmin=vmin, vmax=vmax, figsize=figsize,
+            cbar_shrink=cbar_shrink, **kwargs
         )
 
     return fig
