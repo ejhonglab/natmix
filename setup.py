@@ -9,13 +9,21 @@ try:
 
 except ImportError:
     install_requires = [
-        # TODO how to get this to not cause pip depedency resolver to fail when i want
+        # 2023-07-12: commented just b/c conflict installing current
+        # al_analysis/requirements.txt
+        #
+        # TODO how to get this to not cause pip dependency resolver to fail when i want
         # to use an editable local install? and ideally without breaking the ability to
         # make wheels... (e.g. by adding a conditional checking if hong2p is installed,
         # like i'm currently doing)
         #
         # https://stackoverflow.com/questions/32688688
         'hong2p @ git+https://github.com/ejhonglab/hong2p',
+        #
+        # was trying to adapt Anfernee's answer from:
+        # https://stackoverflow.com/questions/35668295
+        # (doesn't work)
+        ##'hong2p @ file://localhost/../hong2p',
     ]
 
 setup(

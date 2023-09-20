@@ -138,7 +138,7 @@ def load_remy_corr(path: Path, drop_repeats_beyond: Optional[int] = 3,
 
         # TODO what is good_xid? why start at 2 in first test file?
         # TODO TODO factor out this to hong2p.xarray thing (also in
-        # al_analysis.process_experiment.add_metadata)
+        # al_analysis.process_recording.add_metadata)
         'is_pair': ('odor', [is_pair] * dataarray.sizes['odor']),
         'is_pair_b': ('odor_b', [is_pair] * dataarray.sizes['odor_b']),
     }

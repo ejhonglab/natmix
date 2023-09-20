@@ -1,11 +1,11 @@
 
-from typing import Union
 from pprint import pformat
 
 import pandas as pd
 import xarray as xr
 
 from hong2p.olf import parse_odor_name, solvent_str
+from hong2p.types import DataFrameOrDataArray
 
 
 # These both correspond to the typical presentation order in the non-pair recording,
@@ -27,12 +27,38 @@ panel2name_order = {
 panel_order = list(panel2name_order.keys())
 
 
+def _get_odor_var(data: DataFrameOrDataArray) -> str:
+    if isinstance(data, pd.DataFrame):
+        # TODO also support 'odor' (although may only be DataArray input that currently
+        # has 'odor' instead of 'odor1' on input...)
+        names = data.index.names
+        if 'odor' in names and 'odor1' not in names:
+            import ipdb; ipdb.set_trace()
+            # TODO want to check answer on columns would be consistent? ever need to
+            # support odor on just index and not columns?
+
+        odor_var = 'odor1'
+
+    elif isinstance(data, xr.DataArray):
+        # TODO rewrite these conditionals/assertion to be more readable
+        if hasattr(data, 'odor') and not hasattr(data, 'odor1'):
+            odor_var =  'odor'
+        else:
+            assert hasattr(data, 'odor1')
+            odor_var = 'odor1'
+    else:
+        raise NotImplementedError
+
+    return odor_var
+
+
 # TODO test
 # TODO move to hong2p.olf (+ add module fns for setting / adding to a module level
 # panel -> odor_names state, or at least add kwarg for it)
 # TODO allow extra w/ kwarg (as long as we have all the minimum odors?)?
-def get_panel(arr: Union[xr.DataArray, pd.DataFrame]) -> str:
-    """Returns str name for panel, given data with 'odor1' column/coordinate.
+# TODO rename arr->data to be consistent w/ drop_mix_... ?
+def get_panel(arr: DataFrameOrDataArray) -> str:
+    """Returns str name for panel, given data with 'odor1' [/ 'odor'] column/coordinate.
 
     Input must have all the odors from a panel and nothing extra, beyond solvent/pfo,
     otherwise a ValueError is raised.
@@ -51,7 +77,13 @@ def get_panel(arr: Union[xr.DataArray, pd.DataFrame]) -> str:
     solvent_names = {'pfo', solvent_str}
 
     # TODO this actually work w/ (~equiv formatted) DataFrame input?
-    arr_names = {parse_odor_name(o) for o in arr.odor1.values
+
+    odor_var = _get_odor_var(arr)
+    # TODO delete if replacement equiv
+    #arr_names = {parse_odor_name(o) for o in arr.odor1.values
+    assert arr[odor_var].equals(getattr(arr, odor_var))
+    #
+    arr_names = {parse_odor_name(o) for o in arr[odor_var].values
         if o not in solvent_names
     }
 
@@ -107,13 +139,34 @@ def dropna_odors(arr: xr.DataArray, _checks=True) -> xr.DataArray:
 
 
 # TODO unit test. enumerate dilution_[rows|cols] [not-]null combinations
-def drop_mix_dilutions(data):
+# TODO update type hint to indicate it returns same type as input. possible?
+# TODO TODO modify to also work if input just has 'odor'/'odor_b', and not
+# 'odor1'/'odor1_b' (other stuff would need to change too, to fix natmix.plot_corr usage
+# w/ non-multiindexed odor X odor input (e.g. when called on modelling outputs from
+# al_analysis.py)
+def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
     """Drops '~kiwi' / 'control mix' at concentrations other than undiluted ('@ 0').
     """
+    # TODO add note to doc clarifying why no dealing w/ 'odor2[_b]' here
+    # (b/c mixes were always alone, and thus 'odor1[_b]' right? but in some pair stuff
+    # lone odors could be 'odor2[_b]'... so what ensured mix stuff couldn't?)
+
     mix_names = ('~kiwi', 'control mix')
 
+    odor_var = _get_odor_var(data)
+
+    # Only used for DataFrame input
+    old_index_levels = None
+    if isinstance(data, pd.DataFrame):
+        # TODO maybe flag to disable this, or only if needed levels are not already
+        # columns? currently assuming DataFrame input will always have them in index
+        # levels
+        old_index_levels = data.index.names
+        assert odor_var in old_index_levels
+        data = data.reset_index()
+
     def is_dilution(name, arr):
-        """Returns boolean vector of length arr True were arr contains mix dilution data
+        """Returns boolean array, True were arr contains dilutions of odor with `name`
         """
         # TODO also support just missing '@' delimiter (if '@ 0' were implied in this
         # case)?
@@ -122,31 +175,39 @@ def drop_mix_dilutions(data):
     dilution_rows = None
     dilution_cols = None
     for name in mix_names:
-        curr_dilution_rows = is_dilution(name, data.odor1)
+        curr_dilution_rows = is_dilution(name, data[odor_var])
         if dilution_rows is None:
             dilution_rows = curr_dilution_rows
         else:
             dilution_rows = dilution_rows | curr_dilution_rows
 
         # Should currently only be True for correlation matrix DataArray input.
-        # TODO TODO TODO did i actually want to check 'odor_b' vs 'odor1_b'?
-        # and if the former, did i want 'odor', rather than 'odor1', earlier?
-        if hasattr(data, 'odor1_b'):
-            curr_dilution_cols = is_dilution(name, data.odor1_b)
+        if hasattr(data, f'{odor_var}_b'):
+            # TODO delete if below works
+            #curr_dilution_cols = is_dilution(name, data.odor1_b)
+            curr_dilution_cols = is_dilution(name, data[f'{odor_var}_b'])
+
             if dilution_cols is None:
                 dilution_cols = curr_dilution_cols
             else:
                 dilution_cols = dilution_cols | curr_dilution_cols
 
+    # TODO TODO but does earlier code actually work w/ dataframe input? test!
     if isinstance(data, pd.DataFrame):
         assert dilution_cols is None
+
         # TODO maybe just do data[dilutions_rows].copy(), cause simpler
-        return data.drop(index=dilution_rows[dilution_rows].index)
+        data = data.drop(index=dilution_rows[dilution_rows].index)
+
+        assert old_index_levels is not None
+        return data.set_index(old_index_levels)
     else:
         # might trigger... would need to revert so something like commented code if so
-        assert dilution_rows is not None
-        assert dilution_cols is not None
-        # TODO TODO TODO why did i decide to comment this again?
+        # (currently triggering on new diag+megamat data where there are no natural mix
+        # dilutions)
+        #assert dilution_rows is not None
+        #assert dilution_cols is not None
+        # TODO TODO why did i decide to comment this again?
         '''
         if dilution_rows.any().item():
             # TODO better way? .sel?
@@ -155,8 +216,14 @@ def drop_mix_dilutions(data):
         if dilution_cols:
             data = data.where(~ dilution_cols, drop=True)
         '''
-        data = data.where(~ dilution_rows, drop=True)
-        data = data.where(~ dilution_cols, drop=True)
+        # TODO test versions gated behind None tests still works as expected with old
+        # input that actually had natural mix diluitions (added tests here to work on
+        # new data lacking any of these odors)
+        if dilution_rows is not None:
+            data = data.where(~ dilution_rows, drop=True)
+
+        if dilution_cols is not None:
+            data = data.where(~ dilution_cols, drop=True)
 
         return data
 
@@ -165,7 +232,7 @@ def drop_mix_dilutions(data):
 # TODO TODO after fixing to work w/ corr input (w/ odor_b), use in place of dropping all
 # is_pair stuff in plot_corrs (so that if i wanted to show some stuff from pair expt, i
 # could)
-def drop_nonlone_pair_expt_odors(arr):
+def drop_nonlone_pair_expt_odors(arr: xr.DataArray) -> xr.DataArray:
     """
     Drops (along 'odor' dim) presentations that are any of:
     - solvent-only

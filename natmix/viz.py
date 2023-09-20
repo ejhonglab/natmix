@@ -30,14 +30,18 @@ def get_fly_id_palette(df: pd.DataFrame) -> dict:
 
     if 'fly_id' not in df.columns:
         # This will sort on the ('date', 'fly_num') combinations, by default.
+        # TODO replace w/ add_fly_id? don't i have a fn for that?
         add_group_id(df, ['date', 'fly_num'], name='fly_id', inplace=True)
 
+    assert not df.fly_id.isna().any(), 'nunique does not count NaN, but unique does'
     n_flies = df.fly_id.nunique()
+    # TODO default to cc.glasbey (but take kwarg to replace 'hls'?)?
     fly_colors = sns.color_palette('hls', n_flies)
     # TODO do w/o numpy call if easy way (-> remove np import). set()?
     return dict(zip(sorted(np.unique(df.fly_id)), fly_colors))
 
 
+# TODO TODO also work on DataFrame input?
 # TODO maybe pick title automatically based on metadata on corr (+ require that extra
 # metadata if we dont have enough of it as-is), to further homogenize plots
 # TODO set colormap in here (w/ context manager ideally)
@@ -47,9 +51,11 @@ def get_fly_id_palette(df: pd.DataFrame) -> dict:
 # use that + constrained layout?
 # TODO TODO increase figsize / dpi so that corrs don't look quite as blurry as they do
 # now that i added figsize (which is slightly smaller than default)
+# TODO TODO move core of this to hong2p.viz, and maybe wrap here if needed?
+# TODO type hint name_order
 def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
     mix_dilutions=False, vmin=-0.2, vmax=1.0, warn=False, figsize=(5, 4.8),
-    cbar_shrink=0.736, **kwargs) -> Figure:
+    cbar_shrink=0.736, name_order=None, sort: bool = True, **kwargs) -> Figure:
     """Shows correlations between representations of panel odors.
 
     Args:
@@ -60,33 +66,32 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
 
         kwargs: passed thru to `hong2p.viz.matshow`
     """
-    name_order = None
-
     if not mix_dilutions:
         corr = drop_mix_dilutions(corr)
 
-    # TODO deprecate panel argument once get_panel is working
-    if panel is None:
-        try:
-            panel = get_panel(corr)
-        except ValueError as err:
-            warn_msg = f'{err}\nsorting correlation matrix alphabetically!'
-            if warn:
-                warnings.warn(warn_msg)
-    else:
-        if panel not in panel2name_order.keys():
-            raise ValueError('must pass panel keyword argument, from among '
-                f'{list(panel2name_order.keys())}'
-            )
+    if name_order is None:
+        # TODO deprecate panel argument once get_panel is working
+        if panel is None:
+            try:
+                panel = get_panel(corr)
+            except ValueError as err:
+                warn_msg = f'{err}\nsorting correlation matrix alphabetically!'
+                if warn:
+                    warnings.warn(warn_msg)
+        else:
+            if panel not in panel2name_order.keys():
+                raise ValueError('must pass panel keyword argument, from among '
+                    f'{list(panel2name_order.keys())}'
+                )
+
+        if panel is not None:
+            # TODO may want to check we have all names from name_order selected
+            # (maybe barring pfo?)
+            name_order = panel2name_order[panel]
 
     # TODO maybe factor into hong2p.viz.callable_ticklabels (or similar wrapper
     # to plotting fns) (also may not always want this done here in plot_corr...)
     corr = move_all_coords_to_index(corr)
-
-    if panel is not None:
-        # TODO may want to check we have all names from name_order selected
-        # (maybe barring pfo?)
-        name_order = panel2name_order[panel]
 
     # Assuming input does not contain pair data if this variable not present.
     has_is_pair = 'is_pair' in corr.get_index('odor').names
@@ -109,6 +114,9 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
             # TODO delete if not failing
             assert corr.equals(old)
 
+        # TODO was an AssertionError triggering this or something else?
+        # presumably something else if i felt the need to print traceback?
+        # test on old data that was triggering this!
         except:
             print('ERROR IN PLOT_CORR:')
             print(traceback.format_exc())
@@ -129,10 +137,11 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
     # like to copy the pandas behavior i take advantage of
     corr = corr.to_pandas()
 
-    if name_order is not None:
-        corr = sort_odors(corr, name_order=name_order)
-    else:
-        corr = sort_odors(corr)
+    if sort:
+        if name_order is not None:
+            corr = sort_odors(corr, name_order=name_order)
+        else:
+            corr = sort_odors(corr)
 
     # TODO might want to select between one of two orders based on whether we only have
     # is_pair==False data or not?
