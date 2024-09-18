@@ -138,10 +138,7 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
     corr = corr.to_pandas()
 
     if sort:
-        if name_order is not None:
-            corr = sort_odors(corr, name_order=name_order)
-        else:
-            corr = sort_odors(corr)
+        corr = sort_odors(corr, name_order=name_order)
 
     # TODO might want to select between one of two orders based on whether we only have
     # is_pair==False data or not?
