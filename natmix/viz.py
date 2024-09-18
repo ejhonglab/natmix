@@ -215,12 +215,14 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     df = df[df.panel.isin(panel2name_order)].copy()
     assert len(df) > 0, 'dropped all panels'
 
-    df = df[~df.is_pair].copy()
+    # TODO don't drop these? plot alongside the in-vial mixtures (or regardless, for
+    # experiments that only have these)?
+    df.loc[
+        (df['odor1'] != solvent_str) & (df['odor2'] != solvent_str), 'is_pair'
+    ] = True
 
     nonpair_df = df[~df.is_pair].copy()
     nonpair_df.rename(columns={'odor1': 'odor'}, inplace=True)
-    assert set(nonpair_df.odor2.unique()) == {solvent_str}
-
     df = nonpair_df
 
     panel2order = panel_odor_orders(df, panel2name_order)
@@ -259,10 +261,15 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
         def pointplot(*args, **kwargs):
             # NOTE: not possible to change alpha via palette passed in, at least not
-            # with this pointplot function and seaborn 0.11.2
+            # with this pointplot function and seaborn 0.11.2 (maybe in current seaborn
+            # it is?)
             return sns.pointplot(*args,
                 #linestyles='dotted',
-                scale=0.5,
+                # TODO fix deprecation (/delete):
+                # The `scale` parameter is deprecated and will be removed in v0.15.0.
+                # You can now control the size of each plot element using matplotlib
+                # `Line2D` parameters (e.g., `linewidth`, `markersize`, etc.).
+                #scale=0.5,
                 **kwargs
             )
 
@@ -279,8 +286,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
                 errorbar=('ci', ci),
                 capsize=0.2,
                 facecolor=(1, 1, 1, 0),
-                errcolor=(0, 0, 0, 1.0),
-                errwidth=1.5,
+                err_kws=dict(color=(0, 0, 0, 1.0), linewidth=1.5),
                 **kwargs
             )
 
@@ -380,6 +386,9 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
             print(f'{x}:', getattr(g.fig.subplotpars, x))
         print()
 
+    # NOTE: seems to be broken now anyway. line 299 in swarmplot has KeyError trying to
+    # get 'color' from kwargs
+    #
     # TODO delete / somehow turn into test, after verifying it matches up w/ facetgrid
     # stuff using with_panel_orders
     if _checks:
@@ -401,13 +410,18 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
             plt.xticks(rotation=90)
             ax.set_title(panel)
 
-        g.add_legend(title='Fly')
+        g.add_legend(title='fly')
         warnings.warn('manually verify the plots show match, then re-run without '
             '_checks=True'
         )
         plt.show()
         import ipdb; ipdb.set_trace()
     #
+
+    # TODO this work? (yes, but need to update how plotting is done so it shows
+    # date/fly_num or fly_id for each) (assuming they are sorted tho...)
+    if color_flies:
+        g.add_legend(title='fly')
 
     return g
 

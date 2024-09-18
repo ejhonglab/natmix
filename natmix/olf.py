@@ -18,8 +18,12 @@ panel2name_order = {
     # (and/or 'control mix' to just 'mix', though that would risk ambiguity if ever done
     # for more than just plotting...)
     # + 'pfo @ 0' -> 'pfo'
-    'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', '~kiwi'],
-    'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', 'control mix'],
+    # NOTE: 'ea+eb' is the in-vial mixture. in air mixture should currently have spaces
+    # around the '+' delimiter.
+    # TODO or do i want 2-component mixtures after 5-component mixes?
+    'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'ea+eb', '~kiwi'],
+    # TODO TODO be consisnent w/ either 'oct' or '1o3ol'
+    'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', '1o3ol+2h', 'control mix'],
     # TODO make the swap to these at some point (other changes need to be made too)
     #'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'kmix'],
     #'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', 'cmix'],
@@ -155,15 +159,19 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
 
     odor_var = _get_odor_var(data)
 
-    # Only used for DataFrame input
+    # only used for DataFrame input
     old_index_levels = None
     if isinstance(data, pd.DataFrame):
-        # TODO maybe flag to disable this, or only if needed levels are not already
-        # columns? currently assuming DataFrame input will always have them in index
-        # levels
-        old_index_levels = data.index.names
-        assert odor_var in old_index_levels
-        data = data.reset_index()
+        # if data already had reset index, .names would be == [None]
+        if data.index.names != [None]:
+            old_index_levels = data.index.names
+
+            assert odor_var in old_index_levels, \
+                f'{odor_var=} not in {old_index_levels=}'
+
+            data = data.reset_index()
+        else:
+            assert odor_var in data.columns
 
     def is_dilution(name, arr):
         """Returns boolean array, True were arr contains dilutions of odor with `name`
@@ -199,8 +207,12 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
         # TODO maybe just do data[dilutions_rows].copy(), cause simpler
         data = data.drop(index=dilution_rows[dilution_rows].index)
 
-        assert old_index_levels is not None
-        return data.set_index(old_index_levels)
+        # TODO delete? would any data have index not already reset now?
+        # don't i want consistent output anyway?
+        if old_index_levels is not None:
+            return data.set_index(old_index_levels)
+        #
+        return data
     else:
         # might trigger... would need to revert so something like commented code if so
         # (currently triggering on new diag+megamat data where there are no natural mix
