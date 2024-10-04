@@ -1,6 +1,7 @@
 
 from pprint import pformat
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -169,6 +170,12 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
             assert odor_var in old_index_levels, \
                 f'{odor_var=} not in {old_index_levels=}'
 
+            old_columns = data.columns.copy()
+
+            # NOTE: this changes column dypes since it inserts previous index levels as
+            # columns (w/ str names equal to index level names) (and column levels other
+            # than those used to insert str index level names probably NaN/similar, or
+            # maybe empty str)
             data = data.reset_index()
         else:
             assert odor_var in data.columns
@@ -200,18 +207,24 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
             else:
                 dilution_cols = dilution_cols | curr_dilution_cols
 
-    # TODO TODO but does earlier code actually work w/ dataframe input? test!
     if isinstance(data, pd.DataFrame):
         assert dilution_cols is None
 
         # TODO maybe just do data[dilutions_rows].copy(), cause simpler
         data = data.drop(index=dilution_rows[dilution_rows].index)
 
-        # TODO delete? would any data have index not already reset now?
-        # don't i want consistent output anyway?
         if old_index_levels is not None:
-            return data.set_index(old_index_levels)
-        #
+            data = data.set_index(old_index_levels)
+
+            assert np.array_equal(
+                # comparing *columns.values would probably also work, but the .shape of
+                # each of those was (n,) (with list elements, I think) rather than
+                # (n, 3), and I'm more confident in array_equal behavior in latter case
+                old_columns.to_frame(index=False), data.columns.to_frame(index=False)
+            )
+            # to restore column level dtypes
+            data.columns = old_columns
+
         return data
     else:
         # might trigger... would need to revert so something like commented code if so
