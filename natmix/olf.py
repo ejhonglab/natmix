@@ -20,11 +20,22 @@ panel2name_order = {
     # for more than just plotting...)
     # + 'pfo @ 0' -> 'pfo'
     # NOTE: 'ea+eb' is the in-vial mixture. in air mixture should currently have spaces
-    # around the '+' delimiter.
+    # around the '+' delimiter (would have been true, if I didn't replace the mixture
+    # str for the air-mix in some code, with values like 'eb+ea (air mix)')
     # TODO or do i want 2-component mixtures after 5-component mixes?
-    'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'ea+eb', '~kiwi'],
-    # TODO TODO be consisnent w/ either 'oct' or '1o3ol'
-    'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', '1o3ol+2h', 'control mix'],
+    # '~kiwi' and 'kmix' the same.
+    'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'ea+eb', 'ea+eb (air mix)',
+        'eb+ea (air mix)', '~kiwi', 'kmix'
+    ],
+    # 'oct' and '1o3ol' are the same thing. 'oct' was my old abbreviation for it.
+    # 'control mix' and 'cmix' the same.
+    # TODO try to have mixes in consistent order (prob 2h first in both cases)
+    # TODO fix? seems that current code generating '2h+1o3ol (air mix)' (and similar)
+    # does not have a deterministic component order...
+    'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', '1o3ol', '1o3ol+2h',
+        '2h+oct (air mix)', '2h+1o3ol (air mix)',  '2h+1o3ol (air mix)', 'control mix',
+        'cmix'
+    ],
     # TODO make the swap to these at some point (other changes need to be made too)
     #'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'kmix'],
     #'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', 'cmix'],
@@ -156,7 +167,7 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
     # (b/c mixes were always alone, and thus 'odor1[_b]' right? but in some pair stuff
     # lone odors could be 'odor2[_b]'... so what ensured mix stuff couldn't?)
 
-    mix_names = ('~kiwi', 'control mix')
+    mix_names = ('~kiwi', 'kmix', 'control mix', 'cmix')
 
     odor_var = _get_odor_var(data)
 
