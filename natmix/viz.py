@@ -67,6 +67,8 @@ def plot_corr(corr: xr.DataArray, panel: Optional[str] = None, *, title='',
         kwargs: passed thru to `hong2p.viz.matshow`
     """
     if not mix_dilutions:
+        # TODO add test that i haven't broken this (the only call currently using
+        # DataArray input) by changing fn natmix.olf.drop_mix_dilutions.is_dilution
         corr = drop_mix_dilutions(corr)
 
     if name_order is None:

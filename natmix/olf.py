@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from hong2p.olf import parse_odor_name, solvent_str
+from hong2p.olf import parse_odor_name, parse_log10_conc, solvent_str
 from hong2p.types import DataFrameOrDataArray
 
 
@@ -95,10 +95,6 @@ def get_panel(arr: DataFrameOrDataArray) -> str:
     # TODO this actually work w/ (~equiv formatted) DataFrame input?
 
     odor_var = _get_odor_var(arr)
-    # TODO delete if replacement equiv
-    #arr_names = {parse_odor_name(o) for o in arr.odor1.values
-    assert arr[odor_var].equals(getattr(arr, odor_var))
-    #
     arr_names = {parse_odor_name(o) for o in arr[odor_var].values
         if o not in solvent_names
     }
@@ -194,12 +190,49 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
     def is_dilution(name, arr):
         """Returns boolean array, True were arr contains dilutions of odor with `name`
         """
-        # TODO also support just missing '@' delimiter (if '@ 0' were implied in this
-        # case)?
-        return arr.str.startswith(name) & ~ arr.str.endswith('@ 0')
+        is_dilution_mask = np.array([parse_log10_conc(x) for x in arr.values]) != 0
+
+        # TODO delete. all masks in here seemed equiv to that from list comp above
+        # (for both DataArray and DataFrame data)
+        '''
+        if isinstance(data, xr.DataArray):
+            # TODO is there really no simpler way to apply func to these? would be ideal
+            # if same interface could be applied to pandas and xarray objects, but the
+            # latter don't seem to have either the .apply/.map the pandas objects do
+            is_dilution_mask1 = (
+                xr.apply_ufunc(parse_log10_conc, arr, vectorize=True) != 0
+            )
+            # TODO delete (just keeping this old way to check against new way)
+            is_dilution2 = ~ (arr.str.endswith('@ 0') | arr.str.endswith('@ 0.0'))
+            assert is_dilution2.identical(is_dilution_mask1)
+            #
+        else:
+            # arr should be a pd.Series here
+            is_dilution_mask1 = arr.map(parse_log10_conc) != 0
+
+        assert np.array_equal(is_dilution_mask, is_dilution_mask1)
+        '''
+        #
+
+        # TODO also change this startswith call to a check on full name (after parsing
+        # it out w/ other olf fn)?
+        return arr.str.startswith(name) & is_dilution_mask
 
     dilution_rows = None
     dilution_cols = None
+    # TODO for DataArray corr input (from al_analysis.plot_corrs, via
+    # natmix.viz.plot_corr), w/ coordinates like this:
+    # Coordinates:
+    #     odor1     (odor) object '1o3ol @ -3' '1o3ol @ -3' ... 'va @ -3' 'va @ -3'
+    #     odor2     (odor) object '2h @ -5' '2h @ -5' ... 'solvent' 'solvent'
+    #     repeat    (odor) int64 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 0 1 2
+    #     odor1_b   (odor_b) object '1o3ol @ -3' '1o3ol @ -3' ... 'va @ -3' 'va @ -3'
+    #     odor2_b   (odor_b) object '2h @ -5' '2h @ -5' ... 'solvent' 'solvent'
+    #     repeat_b  (odor_b) int64 0 1 2 0 1 2 0 1 2 0 1 2 ... 0 1 2 0 1 2 0 1 2 0 1 2
+    # Dimensions without coordinates: odor, odor_b
+    # ...are mix dilutions in odor2[_b] levels getting dropped correctly?
+    # (odor2 is only currently ever used for binary in-air mixtures, which will never
+    # have the these mixtures as either component, so it is irrelevant)
     for name in mix_names:
         curr_dilution_rows = is_dilution(name, data[odor_var])
         if dilution_rows is None:
@@ -209,8 +242,6 @@ def drop_mix_dilutions(data: DataFrameOrDataArray) -> DataFrameOrDataArray:
 
         # Should currently only be True for correlation matrix DataArray input.
         if hasattr(data, f'{odor_var}_b'):
-            # TODO delete if below works
-            #curr_dilution_cols = is_dilution(name, data.odor1_b)
             curr_dilution_cols = is_dilution(name, data[f'{odor_var}_b'])
 
             if dilution_cols is None:
