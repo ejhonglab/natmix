@@ -33,7 +33,7 @@ panel2name_order = {
     # TODO fix? seems that current code generating '2h+1o3ol (air mix)' (and similar)
     # does not have a deterministic component order...
     'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', '1o3ol', '1o3ol+2h',
-        '2h+oct (air mix)', '2h+1o3ol (air mix)',  '2h+1o3ol (air mix)', 'control mix',
+        '2h+oct (air mix)', '2h+1o3ol (air mix)',  '1o3ol+2h (air mix)', 'control mix',
         'cmix'
     ],
     # TODO make the swap to these at some point (other changes need to be made too)
