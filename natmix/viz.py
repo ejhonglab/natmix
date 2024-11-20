@@ -182,17 +182,23 @@ activation_col2label = {
 def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     ylabel: Optional[str] = None, color_flies=False, mix_dilutions=False, _checks=False,
     _debug=False) -> sns.FacetGrid:
+    # TODO how important are all these columns actually? want to relax so i can use
+    # for model KC data...
     """Shows activation strength of each odor in each panel.
 
     Args:
         df: must have at least the following columns:
             - 'panel': only 'kiwi'/'control' rows used
-            - 'is_pair': True/False
             - 'date'
             - 'fly_num'
             - 'odor1'
-            - 'odor2'
-            - Column specified by `activation_col`
+            - column specified by `activation_col`
+
+            may also have:
+            - 'is_pair': True/False (indicating recording was a binary mixture ramp
+                  experiment)
+
+            - 'odor2' (for 2nd component of in-air binary mixtures)
 
         activation_col: the Y-axis variable
 
@@ -205,7 +211,8 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
     Returns a seaborn FacetGrid with one facet per panel.
 
-    Currently only plotting data where `is_pair` is False.
+    Currently only plotting data where `is_pair` is False (set True for stuff with odor2
+    defined alongside odor1, or False everywhere if input does not have 'odor2' column).
     """
     if not mix_dilutions:
         df = drop_mix_dilutions(df)
@@ -213,15 +220,19 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     # TODO err if we don't have both 'kiwi' / 'control' left?
     # or maybe warn if we only have one?
     #
-    # Dropping 'glomeruli_diagnostics' panel, if present
+    # dropping 'glomeruli_diagnostics' panel, if present
     df = df[df.panel.isin(panel2name_order)].copy()
+
     assert len(df) > 0, 'dropped all panels'
 
-    # TODO don't drop these? plot alongside the in-vial mixtures (or regardless, for
-    # experiments that only have these)?
-    df.loc[
-        (df['odor1'] != solvent_str) & (df['odor2'] != solvent_str), 'is_pair'
-    ] = True
+    if 'odor2' in df.columns:
+        # TODO don't drop these? plot alongside the in-vial mixtures (or regardless, for
+        # experiments that only have these)?
+        df.loc[
+            (df['odor1'] != solvent_str) & (df['odor2'] != solvent_str), 'is_pair'
+        ] = True
+    else:
+        df['is_pair'] = False
 
     nonpair_df = df[~df.is_pair].copy()
     nonpair_df.rename(columns={'odor1': 'odor'}, inplace=True)

@@ -40,6 +40,13 @@ panel2name_order = {
     #'kiwi': ['pfo', 'EtOH', 'IAol', 'IaA', 'ea', 'eb', 'kmix'],
     #'control': ['pfo', 'ms', 'va', 'fur', '2h', 'oct', 'cmix'],
 }
+
+# to support hacky combination of mix concentrations into name part of odor strings, so
+# that al_analysis.py modelling code (which currently strips concentrations at some
+# points) works (see al_analysis.py hack_strs_to_fix_mix_dilutions def)
+panel2name_order['kiwi'].extend(['kmix0', 'kmix-1', 'kmix-2'])
+panel2name_order['control'].extend(['cmix0', 'cmix-1', 'cmix-2'])
+
 panel_order = list(panel2name_order.keys())
 
 
