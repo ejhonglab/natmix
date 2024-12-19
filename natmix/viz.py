@@ -179,9 +179,10 @@ activation_col2label = {
 # kwarg for putting vertical (dashed?) lines between level changes after application of
 # some fn / at specific points (e.g. for grouping activation strengths of components vs
 # mix at dilutions, or for grouping certain odor/odor correlations)
-def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
-    ylabel: Optional[str] = None, color_flies=False, mix_dilutions=False, _checks=False,
-    _debug=False) -> sns.FacetGrid:
+def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff',
+    color_flies: bool = False, mix_dilutions: bool = False, plot_mean_ci: bool = True,
+    ylabel: Optional[str] = None, title: Optional[str] = None, seed=0,
+    swarmplot_kws: Optional[dict] = None, _checks=False, _debug=False) -> sns.FacetGrid:
     # TODO how important are all these columns actually? want to relax so i can use
     # for model KC data...
     """Shows activation strength of each odor in each panel.
@@ -208,6 +209,12 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
         color_flies: if True, will color points to indicate fly identity (shared across
             facets), as well as connecting points from the same fly together
+
+        plot_mean_ci: whether to use `sns.barplot` to show 95% CI on mean. ignored if
+            `color_flies=True`
+
+        seed: passed to `sns.barplot` (only relevant if `color_flies=False` and
+            `plot_mean_ci=True`). seeded (=0) by default.
 
     Returns a seaborn FacetGrid with one facet per panel.
 
@@ -240,9 +247,7 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
     panel2order = panel_odor_orders(df, panel2name_order)
 
-    plot_fn_kws = dict(
-        x='odor', y=activation_col
-    )
+    plot_fn_kws = dict(x='odor', y=activation_col)
 
     # Just the ones shared between FacetGrid constructor and catplot kwargs.
     shared_facet_kws = dict(
@@ -275,7 +280,10 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
         def pointplot(*args, **kwargs):
             # NOTE: not possible to change alpha via palette passed in, at least not
             # with this pointplot function and seaborn 0.11.2 (maybe in current seaborn
-            # it is?)
+            # it is?).
+            #
+            # there is a `seed=` kwarg available to this fn, but don't think i need to
+            # pass to it, as pretty sure never using this path to show error bars
             return sns.pointplot(*args,
                 #linestyles='dotted',
                 # TODO fix deprecation (/delete):
@@ -288,22 +296,30 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
 
         unwrapped_plot_fns = [pointplot]
     else:
+        # TODO expose this as kwarg?
         ci = 95
+        # TODO option to put this on a second line? ylabel_ci_sep?
         ylabel += f' (with {ci:.0f}% CI)'
 
-        # TODO TODO maybe include these on the color_flies=True plot anyway?
-        # do i really need two version of this plot?
         def just_err_barplot(*args, **kwargs):
             return sns.barplot(*args,
-                # Changed from ci=ci, deprecated as of seaborn 0.12
+                # TODO add mechanism to override these too? (err_kws?)
+                #
+                # this is an error bar on the mean (b/c default estimator='mean')
                 errorbar=('ci', ci),
                 capsize=0.2,
                 facecolor=(1, 1, 1, 0),
                 err_kws=dict(color=(0, 0, 0, 1.0), linewidth=1.5),
+                seed=seed,
                 **kwargs
             )
 
+        if swarmplot_kws is None:
+            swarmplot_kws = dict()
+
         _ax_id2color = dict()
+        # no `seed=` kwarg to this fn (nor should i need one, as error bars are drawn
+        # via `barplot` call above)
         def swarmplot(*args, **kwargs):
 
             ax_id = id(plt.gca())
@@ -316,18 +332,27 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
             kwargs['color'] = (0, 0, 0)
 
             with warnings.catch_warnings():
+                # TODO specific filter on message, to be more clear
                 warnings.filterwarnings('error')
 
                 try:
-                    # Default marker size=5 (points)
-                    return sns.swarmplot(*args, alpha=0.4, size=5, **kwargs)
+                    # default marker size=5 (points)
+                    return sns.swarmplot(*args, **{
+                        # default warn_thresh=0.05 (percentage of points not able to be
+                        # placed, triggering warning we are filtering for here)
+                        **dict(alpha=0.4, size=5, warn_thresh=0.001),
+                        **swarmplot_kws, **kwargs
+                    })
 
                 except UserWarning as err:
                     # (this is in the message of the warning we are trying to catch)
                     assert 'points cannot be placed' in str(err)
                     raise err
 
-        unwrapped_plot_fns = [just_err_barplot, swarmplot]
+        if plot_mean_ci:
+            unwrapped_plot_fns = [just_err_barplot, swarmplot]
+        else:
+            unwrapped_plot_fns = [swarmplot]
 
 
     plot_fns = [with_panel_orders(fn, panel2order) for fn in unwrapped_plot_fns]
@@ -435,6 +460,10 @@ def plot_activation_strength(df: pd.DataFrame, activation_col: str ='mean_dff',
     # date/fly_num or fly_id for each) (assuming they are sorted tho...)
     if color_flies:
         g.add_legend(title='fly')
+
+    if title is not None:
+        # TODO 1.05 enough?
+        g.fig.suptitle(title, y=1.05)
 
     return g
 
