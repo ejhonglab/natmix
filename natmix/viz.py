@@ -1,6 +1,6 @@
 
 import warnings
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 # TODO delete
 import traceback
 #
@@ -9,7 +9,6 @@ import pandas as pd
 import xarray as xr
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 
 from hong2p.olf import (format_mix_from_strs, sort_odors, panel_odor_orders,
@@ -22,11 +21,19 @@ from hong2p.util import add_group_id, dff_latex
 
 from natmix.olf import panel2name_order, panel_order, get_panel, drop_mix_dilutions
 
+# TODO why this not working? (well, issue is that sns.FacetGrid was still referenced
+# from type hint below, and was then undefined b/c this. not sure if possible to prevent
+# it from being referenced below)
+# just going to comment type hint using sns types below for now.
+if TYPE_CHECKING:
+    import seaborn as sns
+
 
 # TODO maybe warn if called w/ different input (hash sorted (date, fly_num) sequence for
 # lookup?)?
 # TODO parameterize dict return type hint
 def get_fly_id_palette(df: pd.DataFrame) -> dict:
+    import seaborn as sns
 
     if 'fly_id' not in df.columns:
         # This will sort on the ('date', 'fly_num') combinations, by default.
@@ -179,10 +186,14 @@ activation_col2label = {
 # kwarg for putting vertical (dashed?) lines between level changes after application of
 # some fn / at specific points (e.g. for grouping activation strengths of components vs
 # mix at dilutions, or for grouping certain odor/odor correlations)
+# NOTE: type hint currently commented to remove uncondtional sns imports, since that
+# imports scipy which is preventing me from using PYTHONMALLOC=malloc, which limits the
+# tools i can use to debug olfsysm C++ extension
 def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff',
-    color_flies: bool = False, mix_dilutions: bool = False, plot_mean_ci: bool = True,
-    ylabel: Optional[str] = None, title: Optional[str] = None, seed=0,
-    swarmplot_kws: Optional[dict] = None, _checks=False, _debug=False) -> sns.FacetGrid:
+    color_flies: bool = False, hue: Optional[str] = None, mix_dilutions: bool = False,
+    plot_mean_ci: bool = True, ylabel: Optional[str] = None,
+    title: Optional[str] = None, seed=0, swarmplot_kws: Optional[dict] = None,
+    suptitle_y: float = 1.05, _checks=False, _debug=False): #-> sns.FacetGrid:
     # TODO how important are all these columns actually? want to relax so i can use
     # for model KC data...
     """Shows activation strength of each odor in each panel.
@@ -221,6 +232,8 @@ def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff
     Currently only plotting data where `is_pair` is False (set True for stuff with odor2
     defined alongside odor1, or False everywhere if input does not have 'odor2' column).
     """
+    import seaborn as sns
+
     if not mix_dilutions:
         df = drop_mix_dilutions(df)
 
@@ -264,17 +277,30 @@ def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff
         else:
             ylabel = activation_col
 
+    palette = None
     if color_flies:
-        fly_id_palette = get_fly_id_palette(df)
+        assert hue is None, 'hue is mutually exclusive with color_flies=True'
+        palette = get_fly_id_palette(df)
+        # this column will be added by get_fly_id_palette, if df has ['date', 'fly_num']
+        # columns but not 'fly_id'
+        hue = 'fly_id'
 
-        #shared_facet_kws['hue'] = 'fly_id'
+    if hue is not None:
+        if palette is None:
+            # TODO TODO TODO implement (share 'hls' str usage w/ get_fly_id_palette?
+            # anything else?)
+            import ipdb; ipdb.set_trace()
+
+        # TODO delete?
+        #shared_facet_kws['hue'] = hue
         # TODO check if equiv to just using str 'hls'
-        #shared_facet_kws['palette'] = fly_id_palette
+        #shared_facet_kws['palette'] = palette
+        #
 
         # TODO check that (w/o dodge=True) plots are same as if we let FacetGrid handle
         # these kwargs
-        plot_fn_kws['hue'] = 'fly_id'
-        plot_fn_kws['palette'] = fly_id_palette
+        plot_fn_kws['hue'] = hue
+        plot_fn_kws['palette'] = palette
         plot_fn_kws['dodge'] = True
 
         def pointplot(*args, **kwargs):
@@ -363,7 +389,7 @@ def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff
     for plot_fn in plot_fns:
         g.map_dataframe(plot_fn, **plot_fn_kws)
 
-    # TODO TODO also use fly_id_palette for testing against this plot
+    # TODO (delete?) also use palette for testing against this plot?
     #g = sns.catplot(**plot_fn_kws, **shared_facet_kws, kind='point', legend=False)
 
     g.set_titles('{col_name}')
@@ -385,6 +411,7 @@ def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff
         import matplotlib as mpl
 
         print(f'{color_flies=}')
+        print(f'{hue=}')
 
         prefix = 'figure.subplot.'
         sp_vars = ['left', 'right', 'bottom', 'top', 'wspace', 'hspace']
@@ -441,8 +468,7 @@ def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff
 
             for unwrapped_plot_fn in unwrapped_plot_fns:
                 unwrapped_plot_fn(ax=ax, **plot_fn_kws, data=df, order=order,
-                    hue='fly_id' if color_flies else None,
-                    palette=fly_id_palette if color_flies else None,
+                    hue=hue, palette=palette
                 )
 
             plt.xticks(rotation=90)
@@ -461,9 +487,11 @@ def plot_activation_strength(df: pd.DataFrame, *, activation_col: str ='mean_dff
     if color_flies:
         g.add_legend(title='fly')
 
+    elif hue is not None:
+        g.add_legend(title=hue)
+
     if title is not None:
-        # TODO 1.05 enough?
-        g.fig.suptitle(title, y=1.05)
+        g.fig.suptitle(title, y=suptitle_y)
 
     return g
 
