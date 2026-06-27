@@ -2,6 +2,9 @@
 from setuptools import setup, find_packages
 
 
+# TODO TODO try to replace this logic w/ pyproject.toml (and modern pip?)
+# (what's the most recent pip that works w/ olfsysm? can i change it to work w/ more
+# recent ones more easily?)
 try:
     import hong2p
     # Just to support installing a local copy for development.
@@ -33,7 +36,8 @@ setup(
     install_requires=install_requires,
     extras_require={
         'dev': [
-            'pre-commit',
+            # TODO delete. not even configured, right?
+            #'pre-commit',
             'pytest',
             'ipdb',
 

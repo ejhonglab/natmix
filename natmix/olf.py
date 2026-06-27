@@ -52,15 +52,15 @@ panel_order = list(panel2name_order.keys())
 
 def _get_odor_var(data: DataFrameOrDataArray) -> str:
     if isinstance(data, pd.DataFrame):
-        # TODO also support 'odor' (although may only be DataArray input that currently
-        # has 'odor' instead of 'odor1' on input...)
+        # TODO want to check answer on columns would be consistent? ever need to
+        # support odor on just index and not columns?
         names = data.index.names
-        if 'odor' in names and 'odor1' not in names:
-            import ipdb; ipdb.set_trace()
-            # TODO want to check answer on columns would be consistent? ever need to
-            # support odor on just index and not columns?
-
-        odor_var = 'odor1'
+        if 'odor' in names:
+            assert 'odor1' not in names, 'can not have both odor and odor1 levels'
+            odor_var = 'odor'
+        else:
+            odor_var = 'odor1'
+            assert odor_var in names, f'must have either odor/odor1 level in {names=}'
 
     elif isinstance(data, xr.DataArray):
         # TODO rewrite these conditionals/assertion to be more readable
